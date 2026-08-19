@@ -16,6 +16,9 @@ public record LoginRequest(
     [Required, EmailAddress] string Email,
     [Required] string Password);
 
+/// <summary>Admin-driven password reset for any user.</summary>
+public record ResetPasswordRequest([Required, MinLength(6)] string NewPassword);
+
 /// <summary>Admin-driven user creation. Unlike self-registration, this allows
 /// creating Managers, Admins, and Developers (with function + role).</summary>
 public record AdminCreateUserRequest(

@@ -157,6 +157,7 @@ goals, every role skill rated, all SMART fields present, and a peer selected.
 | `GET/POST /api/traits` | JWT / Admin | Company traits |
 | `GET/POST /api/cycles`, `POST /api/cycles/{id}/release` | Admin | Cycles |
 | `GET /api/users` \| `POST /api/users` | Admin | List all users · create Developer/Manager/Admin |
+| `POST /api/users/{id}/reset-password` | Admin | Reset any user's password to a new value |
 | `GET /api/dashboard/ratings?cycleId=` | Admin | Weighted finals + normal-curve fit per developer |
 | `GET /api/reviews/mine` \| `assigned` \| `(all)` | JWT | Review lists |
 | `PUT /api/reviews/{id}/plan`, `POST …/submit` | Developer | Fill & submit plan |

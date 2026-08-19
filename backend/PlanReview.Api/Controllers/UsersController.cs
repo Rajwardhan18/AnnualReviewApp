@@ -62,6 +62,19 @@ public class UsersController : ControllerBase
         return CreatedAtAction(nameof(GetAll), ToDto(created));
     }
 
+    // Admin: reset the password for any user.
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id:int}/reset-password")]
+    public async Task<IActionResult> ResetPassword(int id, ResetPasswordRequest req)
+    {
+        var user = await _db.Users.FindAsync(id);
+        if (user is null) return NotFound(new { message = "User not found." });
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
+        await _db.SaveChangesAsync();
+        return Ok(new { message = $"Password reset for {user.FullName}." });
+    }
+
     // Managers available for assignment (admin) or general reference.
     [HttpGet("managers")]
     public async Task<IEnumerable<UserDto>> GetManagers() =>

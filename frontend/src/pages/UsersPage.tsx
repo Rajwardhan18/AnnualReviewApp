@@ -13,6 +13,8 @@ export default function UsersPage() {
   const [filter, setFilter] = useState<'' | UserType>('')
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [resetTarget, setResetTarget] = useState<User | null>(null)
+  const [msg, setMsg] = useState('')
 
   const load = () => get<User[]>('/api/users').then(setUsers)
   useEffect(() => { load().finally(() => setLoading(false)) }, [])
@@ -42,13 +44,19 @@ export default function UsersPage() {
         </div>
       </div>
 
+      {msg && <div className="success">{msg}</div>}
       {showForm && <AddUserForm onCreated={() => { load(); setShowForm(false) }} />}
+      {resetTarget && (
+        <ResetPasswordForm user={resetTarget}
+          onCancel={() => setResetTarget(null)}
+          onDone={(m) => { setMsg(m); setResetTarget(null) }} />
+      )}
 
       <div className="card">
         {loading ? <div className="loading">Loading…</div> : (
           <table>
             <thead>
-              <tr><th>Name</th><th>Email</th><th>Type</th><th>Function</th><th>Role</th></tr>
+              <tr><th>Name</th><th>Email</th><th>Type</th><th>Function</th><th>Role</th><th></th></tr>
             </thead>
             <tbody>
               {shown.map((u) => (
@@ -58,14 +66,78 @@ export default function UsersPage() {
                   <td><span className={`badge ${TYPE_BADGE[u.userType]}`}>{u.userType}</span></td>
                   <td>{u.functionName ?? <span className="muted">—</span>}</td>
                   <td>{u.roleName ?? <span className="muted">—</span>}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button className="secondary small" onClick={() => { setMsg(''); setResetTarget(u) }}>Reset password</button>
+                  </td>
                 </tr>
               ))}
-              {shown.length === 0 && <tr><td colSpan={5} className="muted" style={{ textAlign: 'center' }}>No users.</td></tr>}
+              {shown.length === 0 && <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>No users.</td></tr>}
             </tbody>
           </table>
         )}
       </div>
     </>
+  )
+}
+
+function ResetPasswordForm({ user, onCancel, onDone }: {
+  user: User
+  onCancel: () => void
+  onDone: (message: string) => void
+}) {
+  const [pw, setPw] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const genPassword = () => {
+    // Readable temporary password: e.g. "Cyan-Owl-4827".
+    const adj = ['Cyan', 'Amber', 'Teal', 'Coral', 'Slate', 'Olive', 'Ruby', 'Indigo']
+    const noun = ['Owl', 'Fox', 'Pine', 'Wren', 'Reef', 'Lark', 'Moss', 'Kite']
+    const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)]
+    const p = `${pick(adj)}-${pick(noun)}-${1000 + Math.floor(Math.random() * 9000)}`
+    setPw(p); setConfirm(p); setErr('')
+  }
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErr('')
+    if (pw.length < 6) { setErr('Password must be at least 6 characters.'); return }
+    if (pw !== confirm) { setErr('Passwords do not match.'); return }
+    setBusy(true)
+    try {
+      await post(`/api/users/${user.id}/reset-password`, { newPassword: pw })
+      onDone(`Password reset for ${user.fullName} (${user.email}). Share the new password securely — they should change it after signing in.`)
+    } catch (e: any) {
+      setErr(e instanceof ApiError ? e.message : 'Failed to reset password')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card" style={{ borderColor: 'var(--primary)' }}>
+      <h2>Reset password — {user.fullName}</h2>
+      <p className="section-hint">Set a new password for <strong>{user.email}</strong>. This takes effect immediately.</p>
+      {err && <div className="error">{err}</div>}
+      <form onSubmit={submit}>
+        <div className="grid-2">
+          <div className="field">
+            <label>New password (min 6)</label>
+            <input type="text" value={pw} minLength={6} onChange={(e) => setPw(e.target.value)} required autoFocus />
+          </div>
+          <div className="field">
+            <label>Confirm password</label>
+            <input type="text" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+          </div>
+        </div>
+        <div className="btn-row">
+          <button type="submit" disabled={busy}>{busy ? 'Resetting…' : 'Reset password'}</button>
+          <button type="button" className="secondary" onClick={genPassword}>Generate</button>
+          <button type="button" className="ghost" onClick={onCancel}>Cancel</button>
+        </div>
+      </form>
+    </div>
   )
 }
 

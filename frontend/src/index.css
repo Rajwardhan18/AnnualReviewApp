@@ -176,8 +176,22 @@ th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: 
 tr:last-child td { border-bottom: none; }
 
 /* ---- Misc ---- */
-.auth-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.auth-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px;
+  background: radial-gradient(1200px 600px at 50% -10%, #eef4f1, var(--bg)); }
 .auth-card { width: 100%; max-width: 420px; }
+.auth-brand {
+  background: linear-gradient(135deg, #0c2a1e 0%, #0b3d2b 55%, #0f5a3a 100%);
+  padding: 30px 28px 26px;
+  text-align: center;
+}
+.auth-tagline { color: rgba(255, 255, 255, 0.72); font-size: 13px; margin-top: 10px; letter-spacing: 0.02em; }
+.auth-body { padding: 24px 28px 28px; }
+.auth-title { margin: 0; font-size: 22px; }
+.sparrow-word {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
 .error { background: #fdecec; color: #a02929; border: 1px solid #f4caca; padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; }
 .error ul { margin: 6px 0 0; padding-left: 18px; }
 .success { background: #e6f6ee; color: #12633f; border: 1px solid #bfe6cf; padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; }

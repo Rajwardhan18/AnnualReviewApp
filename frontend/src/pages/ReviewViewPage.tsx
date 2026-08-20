@@ -110,7 +110,7 @@ export default function ReviewViewPage() {
               </tbody>
             </table>
           )}
-          <h3 style={{ marginTop: 20 }}>Key R&amp;D Improvements</h3>
+          <h3 style={{ marginTop: 20 }}>Initiatives Undertaken</h3>
           {review.rndImprovements.length === 0 ? <p className="muted">None recorded.</p> : (
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {review.rndImprovements.map((r) => <li key={r.id}>{r.description}</li>)}

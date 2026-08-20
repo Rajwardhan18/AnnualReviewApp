@@ -111,7 +111,7 @@ AnnualReviewApp/
 - **Goal progress tracking** — each professional/personal goal carries a **status**
   (Not Started / In Progress / Completed / Dropped), a **completion %**, a comment and a date.
   Progress is editable through the year even after the plan is locked (`PUT /reviews/{id}/progress`).
-- **Skill-assessment extras** — the Skill Assessment tab also captures **Key R&D Improvements**
+- **Skill-assessment extras** — the Skill Assessment tab also captures **Initiatives Undertaken**
   (research contributions) and **Future Skills to Acquire**.
 - **Last-year key achievements** — a tab of projects delivered last year, each with **project
   name, client, work description, the manager's rating**, and an optional company trait.

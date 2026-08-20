@@ -292,12 +292,12 @@ export default function ReviewEditorPage() {
             ))}
           </div>
 
-          {/* Requirement 3: Key R&D Improvements */}
+          {/* Initiatives Undertaken (formerly Key R&D Improvements) */}
           <div className="card">
-            <h3>Key R&amp;D Improvements</h3>
-            <p className="section-hint">Research &amp; development contributions you made.</p>
+            <h3>Initiatives Undertaken</h3>
+            <p className="section-hint">Initiatives and research &amp; development contributions you made.</p>
             <TextList items={rnd} setItems={setRnd} readOnly={readOnly}
-              placeholder="e.g. Built a proof-of-concept caching layer that cut DB load 40%" addLabel="+ Add R&D contribution" multiline />
+              placeholder="e.g. Built a proof-of-concept caching layer that cut DB load 40%" addLabel="+ Add initiative" multiline />
           </div>
 
           {/* Requirement 4: Future skills to acquire */}

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import AriseLogo from './AriseLogo'
 
 interface NavItem { to: string; label: string; icon: string; end?: boolean }
 
@@ -39,8 +40,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     <div className={`app-shell${collapsed ? ' collapsed' : ''}`}>
       <aside className="sidebar">
         <div className="side-brand">
-          <span className="dot" />
-          {!collapsed && <span className="side-brand-text">Plan &amp; Review</span>}
+          <AriseLogo size={26} wordSize={20} wordColor="var(--brand-ink)" showWord={!collapsed} />
           <button className="ghost small side-toggle" onClick={toggle} title={collapsed ? 'Expand' : 'Collapse'}>
             {collapsed ? '»' : '«'}
           </button>

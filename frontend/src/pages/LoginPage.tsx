@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import SparrowLogo from '../components/SparrowLogo'
+import AuthHero from '../components/AuthHero'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -27,13 +27,11 @@ export default function LoginPage() {
 
   return (
     <div className="auth-wrap">
-      <div className="card auth-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="auth-brand">
-          <SparrowLogo height={40} wordColor="#eef3f1" facetStroke="rgba(255,255,255,0.14)" />
-          <div className="auth-tagline">Annual Plan &amp; Review Cycle</div>
-        </div>
-        <div className="auth-body">
-          <h1 className="auth-title">Sign in</h1>
+      <div className="card auth-card">
+        <AuthHero />
+
+        <div className="auth-form">
+          <h1 className="auth-title">Sign in to ARISe</h1>
           <p className="muted" style={{ marginTop: 0 }}>Welcome back — sign in to your account.</p>
           {error && <div className="error">{error}</div>}
           <form onSubmit={submit}>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { get } from '../api/client'
+import AuthHero from '../components/AuthHero'
 import type { FunctionItem, Role, UserType } from '../types'
 
 export default function RegisterPage() {
@@ -54,10 +55,10 @@ export default function RegisterPage() {
   return (
     <div className="auth-wrap">
       <div className="card auth-card">
-        <div className="page-head">
-          <h1>Create account</h1>
-          <p>Register as a Developer or Manager</p>
-        </div>
+        <AuthHero />
+        <div className="auth-form">
+        <h1 className="auth-title">Create your account</h1>
+        <p className="muted" style={{ marginTop: 0 }}>Register as a Developer or Manager.</p>
         {error && <div className="error">{error}</div>}
         <form onSubmit={submit}>
           <div className="field">
@@ -106,6 +107,7 @@ export default function RegisterPage() {
         <p className="muted" style={{ marginTop: 16 }}>
           Already have an account? <Link to="/login">Sign in</Link>
         </p>
+        </div>
       </div>
     </div>
   )

@@ -1,8 +1,10 @@
-# Annual Plan & Review Cycle
+# ARISe — Annual Plan & Review
 
-A web application for running the annual plan-and-review cycle for developers.
+**ARISe** (Achieve · Reflect · Innovate · Strategize — *for excellence*) is a web
+application for running the annual plan-and-review cycle for developers, by **Sparrow**.
 **.NET 9** Web API backend + **React (Vite + TypeScript)** frontend, with **SQLite**
-storage and **JWT** authentication.
+storage and **JWT** authentication. The UI uses the ARISe theme — an emerald/gold palette
+with the four pillars as accent colours and a sunrise brand mark.
 
 ---
 

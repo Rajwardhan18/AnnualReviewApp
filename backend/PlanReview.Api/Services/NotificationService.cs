@@ -66,6 +66,18 @@ public class NotificationService
         return AddAsync(developer, NotificationType.HalfYearlyReleased, subject, body, cycle.Id);
     }
 
+    public Task RatingsReleasedAsync(User developer, ReviewCycle cycle)
+    {
+        var subject = $"{cycle.Name}: your ratings are now available";
+        var body =
+            $"Hi {developer.FullName},\n\n" +
+            $"The {cycle.Name} cycle has been closed and your final ratings have been released.\n\n" +
+            "Sign in to ARISe and open My Performance to see your self, peer and manager ratings, " +
+            "your overall average and where you land on the performance curve.\n\n" +
+            "— ARISe";
+        return AddAsync(developer, NotificationType.RatingsReleased, subject, body, cycle.Id);
+    }
+
     public Task ReviewerAssignedAsync(User reviewer, ReviewerType role, Review review, string developerName)
     {
         var cycleName = review.ReviewCycle?.Name ?? "the current cycle";

@@ -24,7 +24,7 @@ public class CyclesController : ControllerBase
 
     private static CycleDto ToDto(ReviewCycle c, int reviewCount) => new(
         c.Id, c.Name, c.Year, c.StartDate, c.EndDate, c.IsReleased, c.IsActive, reviewCount,
-        c.DueDate, c.HalfYearlyReleased, c.HalfYearlyDueDate);
+        c.DueDate, c.HalfYearlyReleased, c.HalfYearlyDueDate, c.RatingsReleased);
 
     [HttpGet]
     public async Task<IEnumerable<CycleDto>> GetAll()
@@ -117,5 +117,34 @@ public class CyclesController : ControllerBase
 
         await _db.SaveChangesAsync();
         return Ok(new { halfYearlyReleased = true, notified = developers.Count });
+    }
+
+    /// <summary>
+    /// Requirement 4: release final ratings to developers and end the cycle. The developer's
+    /// performance dashboard only shows ratings once this is done.
+    /// </summary>
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id:int}/close")]
+    public async Task<ActionResult> Close(int id)
+    {
+        var cycle = await _db.ReviewCycles.FindAsync(id);
+        if (cycle is null) return NotFound();
+        if (!cycle.IsReleased)
+            return BadRequest(new { message = "Release the annual plan before closing the cycle." });
+
+        var reviews = await _db.Reviews.Where(r => r.ReviewCycleId == id).ToListAsync();
+        var incomplete = reviews.Count(r => r.Status != ReviewStatus.Completed);
+
+        cycle.RatingsReleased = true;
+        cycle.RatingsReleasedAt = DateTime.UtcNow;
+        cycle.IsActive = false;
+
+        // Notify each developer that their ratings are available.
+        var developers = await _db.Users.Where(u => u.UserType == UserType.Developer && u.IsActive).ToListAsync();
+        foreach (var dev in developers)
+            await _notify.RatingsReleasedAsync(dev, cycle);
+
+        await _db.SaveChangesAsync();
+        return Ok(new { ratingsReleased = true, cycleEnded = true, incompleteReviews = incomplete, notified = developers.Count });
     }
 }

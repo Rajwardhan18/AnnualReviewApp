@@ -39,6 +39,9 @@ export default function Layout({ children }: { children: ReactNode }) {
     { to: '/', label: 'Dashboard', icon: 'dashboard', end: true },
     { to: '/notifications', label: 'Notifications', icon: 'bell', badge: unread },
   ]
+  if (user?.userType === 'Developer') {
+    items.push({ to: '/performance', label: 'My Performance', icon: 'trend' })
+  }
   if (user?.userType === 'Admin') {
     items.push({ to: '/admin/ratings', label: 'Ratings', icon: 'chart' })
     items.push({ to: '/admin/users', label: 'Users', icon: 'users' })

@@ -166,10 +166,16 @@ export default function ReviewViewPage() {
         <div className="card"><h3>Self summary</h3><p style={{ margin: 0 }}>{review.selfSummary}</p></div>
       )}
 
-      {/* Reviewer assessment form */}
+      {/* Reviewer assessment: editable until submitted, then locked */}
       {myAssignment && review.status !== 'Draft' && (
-        <AssessmentForm review={review} alreadySubmitted={!!myAssessment?.submittedAt}
-          existing={myAssessment} onDone={reload} />
+        myAssessment?.submittedAt
+          ? <div className="card" style={{ borderColor: 'var(--green)' }}>
+              <h3>Your review <span className="badge Completed">Submitted &amp; locked</span></h3>
+              <p className="section-hint" style={{ margin: 0 }}>
+                You submitted your review on {new Date(myAssessment.submittedAt).toLocaleDateString()}. It can no longer be changed. Your ratings appear below.
+              </p>
+            </div>
+          : <AssessmentForm review={review} existing={myAssessment} onDone={reload} />
       )}
 
       {/* All submitted assessments */}
@@ -358,9 +364,8 @@ function AssignPanel({ review, onDone }: { review: ReviewDetail; onDone: () => P
   )
 }
 
-function AssessmentForm({ review, alreadySubmitted, existing, onDone }: {
+function AssessmentForm({ review, existing, onDone }: {
   review: ReviewDetail
-  alreadySubmitted: boolean
   existing?: ReviewDetail['assessments'][number]
   onDone: () => Promise<any>
 }) {
@@ -400,8 +405,8 @@ function AssessmentForm({ review, alreadySubmitted, existing, onDone }: {
 
   return (
     <div className="card" style={{ borderColor: 'var(--primary)' }}>
-      <h3>Your assessment {alreadySubmitted && <span className="badge Completed">submitted</span>}</h3>
-      <p className="section-hint">Provide your rating and feedback for this developer. You can re-submit to update.</p>
+      <h3>Your assessment</h3>
+      <p className="section-hint">Provide your rating and feedback for this developer. Once submitted, your review is locked.</p>
       {msg && <div className="success">{msg}</div>}
       {err && <div className="error">{err}</div>}
       <div className="field">
@@ -423,7 +428,7 @@ function AssessmentForm({ review, alreadySubmitted, existing, onDone }: {
           ))}
         </div>
       )}
-      <button disabled={busy} onClick={submit}>{alreadySubmitted ? 'Update assessment' : 'Submit assessment'}</button>
+      <button disabled={busy} onClick={submit}>Submit assessment</button>
     </div>
   )
 }

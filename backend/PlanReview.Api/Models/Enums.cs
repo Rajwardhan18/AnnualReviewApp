@@ -44,5 +44,6 @@ public enum NotificationType
     PlanReleased = 0,
     HalfYearlyReleased = 1,
     ReviewerAssigned = 2,
-    Reminder = 3
+    Reminder = 3,
+    RatingsReleased = 4
 }

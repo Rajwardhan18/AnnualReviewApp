@@ -79,11 +79,15 @@ export default function DashboardPage() {
           <ReviewTable
             rows={mine}
             showDeveloper={false}
-            actionFor={(r) => (
-              <Link className="btn small" to={`/reviews/${r.id}/edit`} style={{ color: '#fff' }}>
-                {r.status === 'Draft' ? 'Fill plan' : 'Update progress'}
-              </Link>
-            )}
+            actionFor={(r) => {
+              if (r.status === 'Draft')
+                return <Link className="btn small" to={`/reviews/${r.id}/edit`} style={{ color: '#fff' }}>Fill plan</Link>
+              if (r.halfYearlyReleased && r.midYearSubmitted)
+                return <span className="pill-row"><span className="badge Completed">Mid-year submitted</span><Link className="btn small secondary" to={`/reviews/${r.id}`}>View</Link></span>
+              if (r.halfYearlyReleased)
+                return <Link className="btn small" to={`/reviews/${r.id}/edit`} style={{ color: '#fff' }}>Submit mid-year</Link>
+              return <Link className="btn small" to={`/reviews/${r.id}/edit`} style={{ color: '#fff' }}>Update progress</Link>
+            }}
           />
         </div>
       )}
@@ -95,7 +99,11 @@ export default function DashboardPage() {
           <ReviewTable
             rows={assigned}
             showDeveloper
-            actionFor={(r) => <Link className="btn small" to={`/reviews/${r.id}`} style={{ color: '#fff' }}>Review &amp; rate</Link>}
+            actionFor={(r) => (
+              r.myAssessmentSubmitted
+                ? <span className="pill-row"><span className="badge Completed">Submitted</span><Link className="btn small secondary" to={`/reviews/${r.id}`}>View</Link></span>
+                : <Link className="btn small" to={`/reviews/${r.id}`} style={{ color: '#fff' }}>Review &amp; rate</Link>
+            )}
           />
         </div>
       )}

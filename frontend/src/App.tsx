@@ -10,6 +10,7 @@ import AdminPage from './pages/AdminPage'
 import UsersPage from './pages/UsersPage'
 import RatingsDashboardPage from './pages/RatingsDashboardPage'
 import NotificationsPage from './pages/NotificationsPage'
+import MyPerformancePage from './pages/MyPerformancePage'
 import type { ReactNode } from 'react'
 
 function Protected({ children, adminOnly }: { children: ReactNode; adminOnly?: boolean }) {
@@ -32,6 +33,7 @@ export default function App() {
       <Route path="/reviews/:id/edit" element={<Protected><ReviewEditorPage /></Protected>} />
       <Route path="/reviews/:id" element={<Protected><ReviewViewPage /></Protected>} />
       <Route path="/notifications" element={<Protected><NotificationsPage /></Protected>} />
+      <Route path="/performance" element={<Protected><MyPerformancePage /></Protected>} />
       <Route path="/admin/ratings" element={<Protected adminOnly><RatingsDashboardPage /></Protected>} />
       <Route path="/admin/users" element={<Protected adminOnly><UsersPage /></Protected>} />
       <Route path="/admin" element={<Protected adminOnly><AdminPage /></Protected>} />

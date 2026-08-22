@@ -132,8 +132,18 @@ AnnualReviewApp/
   automatically added as a Peer reviewer, so their peer review is captured and visible to the
   admin without waiting for a separate admin assignment.
 - **Half-yearly checkpoint** — the admin can release a mid-year review on a cycle; developers
-  update their goal progress and add a **mid-year reflection**. Manager and peer assessments
-  stay at year-end.
+  update their goal progress and add a **mid-year reflection**, then **submit** it — after which
+  it **locks** (`POST /reviews/{id}/submit-midyear`). Manager and peer assessments stay at year-end.
+- **Submit & freeze** — once a reviewer submits their assessment it is **locked** (no re-submit),
+  and the dashboards reflect submitted state ("Submitted" / "Mid-year submitted") instead of the
+  action button.
+- **Developer performance dashboard** — a **My Performance** page shows each developer their
+  self-progress (goal completion, status breakdown) always, and — once the admin releases
+  ratings — their self / peer / manager scores, **overall average**, weighted final, percentile
+  and performance **band** vs the team average (reviewer names hidden). `GET /api/performance/me`.
+- **Close the cycle** — the admin can **release ratings & end the cycle** once reviews are done
+  (`POST /cycles/{id}/close`); this reveals ratings on each developer's My Performance page and
+  notifies everyone.
 - **Notifications** — every developer is notified when the annual plan (with target dates and
   reminders) or the half-yearly checkpoint is released, and assigned managers/peers are notified
   on assignment. Notifications appear in-app (a bell with an unread badge) and are **also emailed

@@ -38,6 +38,8 @@ public class Review
     [MaxLength(2000)]
     public string? MidYearReflection { get; set; }
     public DateTime? MidYearUpdatedAt { get; set; }
+    /// <summary>Set when the developer submits the mid-year review — it then freezes.</summary>
+    public DateTime? MidYearSubmittedAt { get; set; }
 
     public List<Goal> Goals { get; set; } = new();
     public List<Achievement> Achievements { get; set; } = new();

@@ -34,7 +34,7 @@ public class ReviewsController : ControllerBase
             .Include(r => r.Function).Include(r => r.Role)
             .OrderByDescending(r => r.ReviewCycle!.Year)
             .ToListAsync();
-        return rows.Select(ToSummary);
+        return rows.Select(r => ToSummary(r));
     }
 
     // Reviewer (manager/peer): reviews assigned to me that have been submitted.
@@ -47,9 +47,10 @@ public class ReviewsController : ControllerBase
                         && r.Status != ReviewStatus.Draft)
             .Include(r => r.ReviewCycle).Include(r => r.Developer)
             .Include(r => r.Function).Include(r => r.Role)
+            .Include(r => r.Assessments)
             .OrderByDescending(r => r.ReviewCycle!.Year)
             .ToListAsync();
-        return rows.Select(ToSummary);
+        return rows.Select(r => ToSummary(r, r.Assessments.Any(a => a.ReviewerId == me && a.SubmittedAt != null)));
     }
 
     // Admin: all reviews.
@@ -64,7 +65,7 @@ public class ReviewsController : ControllerBase
             .Include(r => r.Function).Include(r => r.Role)
             .OrderByDescending(r => r.ReviewCycle!.Year).ThenBy(r => r.Developer!.FullName)
             .ToListAsync();
-        return rows.Select(ToSummary);
+        return rows.Select(r => ToSummary(r));
     }
 
     // ---------------- Detail ----------------
@@ -232,7 +233,36 @@ public class ReviewsController : ControllerBase
 
         var me = User.GetUserId();
         if (review.DeveloperId != me) return Forbid();
+        if (review.MidYearSubmittedAt is not null)
+            return BadRequest(new { message = "Your mid-year review has been submitted and is locked." });
 
+        ApplyProgress(review, req);
+        await _db.SaveChangesAsync();
+        return await BuildDetail((await LoadFull(id))!);
+    }
+
+    /// <summary>Submit the mid-year review — saves progress + reflection and freezes it.</summary>
+    [HttpPost("{id:int}/submit-midyear")]
+    public async Task<ActionResult<ReviewDetailDto>> SubmitMidYear(int id, SaveProgressRequest req)
+    {
+        var review = await LoadFull(id);
+        if (review is null) return NotFound();
+
+        var me = User.GetUserId();
+        if (review.DeveloperId != me) return Forbid();
+        if (review.ReviewCycle?.HalfYearlyReleased != true)
+            return BadRequest(new { message = "The half-yearly review has not been opened yet." });
+        if (review.MidYearSubmittedAt is not null)
+            return BadRequest(new { message = "Your mid-year review has already been submitted." });
+
+        ApplyProgress(review, req);
+        review.MidYearSubmittedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return await BuildDetail((await LoadFull(id))!);
+    }
+
+    private static void ApplyProgress(Review review, SaveProgressRequest req)
+    {
         foreach (var p in req.Goals)
         {
             var goal = review.Goals.FirstOrDefault(g => g.Id == p.GoalId);
@@ -242,15 +272,11 @@ public class ReviewsController : ControllerBase
             goal.StatusComment = p.StatusComment;
             goal.StatusDate = p.StatusDate;
         }
-
         if (req.MidYearReflection is not null)
         {
             review.MidYearReflection = req.MidYearReflection;
             review.MidYearUpdatedAt = DateTime.UtcNow;
         }
-
-        await _db.SaveChangesAsync();
-        return await BuildDetail((await LoadFull(id))!);
     }
 
     // ---------------- Admin: assign reviewers (2 managers + 1 peer) ----------------
@@ -325,7 +351,11 @@ public class ReviewsController : ControllerBase
         if (review.Status == ReviewStatus.Draft)
             return BadRequest(new { message = "The developer has not submitted this plan yet." });
 
-        var assessment = review.Assessments.FirstOrDefault(a => a.ReviewerId == me);
+        var existing = review.Assessments.FirstOrDefault(a => a.ReviewerId == me);
+        if (existing?.SubmittedAt is not null)
+            return BadRequest(new { message = "You have already submitted your review — it is now locked." });
+
+        var assessment = existing;
         if (assessment is null)
         {
             assessment = new ReviewerAssessment { ReviewId = id, ReviewerId = me, ReviewerType = assignment.ReviewerType };
@@ -519,6 +549,7 @@ public class ReviewsController : ControllerBase
             r.SelectedPeer?.FullName,
             r.SelfSummary,
             r.MidYearReflection,
+            r.MidYearSubmittedAt,
             r.ReviewCycle?.HalfYearlyReleased ?? false,
             r.ReviewCycle?.HalfYearlyDueDate,
             r.ReviewCycle?.DueDate,
@@ -539,9 +570,12 @@ public class ReviewsController : ControllerBase
             myManagerSlot);
     }
 
-    private static ReviewSummaryDto ToSummary(Review r) => new(
+    private static ReviewSummaryDto ToSummary(Review r, bool? myAssessmentSubmitted = null) => new(
         r.Id, r.ReviewCycleId, r.ReviewCycle!.Name, r.DeveloperId, r.Developer!.FullName,
         r.Function != null ? r.Function.Name : null,
         r.Role != null ? r.Role.Name : null,
-        r.Status, r.SubmittedAt);
+        r.Status, r.SubmittedAt,
+        r.ReviewCycle.HalfYearlyReleased,
+        r.MidYearSubmittedAt != null,
+        myAssessmentSubmitted);
 }

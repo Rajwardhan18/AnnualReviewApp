@@ -225,7 +225,7 @@ function CyclesTab() {
         <h2>Cycles</h2>
         <div style={{ overflowX: 'auto' }}>
         <table>
-          <thead><tr><th>Name</th><th>Due</th><th>Reviews</th><th>Annual</th><th>Half-yearly</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th>Due</th><th>Reviews</th><th>Annual</th><th>Half-yearly</th><th>Ratings</th><th></th></tr></thead>
           <tbody>
             {cycles.map((c) => (
               <tr key={c.id}>
@@ -235,6 +235,9 @@ function CyclesTab() {
                 <td>{c.isReleased ? <span className="badge Completed">Released</span> : <span className="badge Draft">Not released</span>}</td>
                 <td>{c.halfYearlyReleased
                   ? <span className="badge InProgress">Released{c.halfYearlyDueDate ? ` · due ${new Date(c.halfYearlyDueDate).toLocaleDateString()}` : ''}</span>
+                  : <span className="muted">—</span>}</td>
+                <td>{c.ratingsReleased
+                  ? <span className="badge Completed">Released · cycle ended</span>
                   : <span className="muted">—</span>}</td>
                 <td>
                   <div className="btn-row">
@@ -250,7 +253,13 @@ function CyclesTab() {
                         setMsg(`Half-yearly review released; ${r.notified} developer(s) notified.`); load()
                       })}>Release half-yearly</button>
                     )}
-                    {c.isReleased && (
+                    {c.isReleased && !c.ratingsReleased && (
+                      <button className="small" onClick={() => wrap(async () => {
+                        const r = await post<{ incompleteReviews: number; notified: number }>(`/api/cycles/${c.id}/close`)
+                        setMsg(`Ratings released & cycle ended. ${r.notified} developer(s) notified.${r.incompleteReviews ? ` (${r.incompleteReviews} review(s) were not yet completed.)` : ''}`); load()
+                      })}>Release ratings &amp; end cycle</button>
+                    )}
+                    {c.isReleased && !c.ratingsReleased && (
                       <button className="small ghost" onClick={() => wrap(async () => {
                         const r = await post<{ notified: number }>(`/api/cycles/${c.id}/release`)
                         setMsg(`Re-notified ${r.notified} developer(s).`); load()

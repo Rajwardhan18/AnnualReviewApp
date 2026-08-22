@@ -118,7 +118,11 @@ public record ReviewSummaryDto(
     string? FunctionName,
     string? RoleName,
     ReviewStatus Status,
-    DateTime? SubmittedAt);
+    DateTime? SubmittedAt,
+    bool HalfYearlyReleased,
+    bool MidYearSubmitted,
+    // For the "assigned to me" list: has the current reviewer submitted their assessment?
+    bool? MyAssessmentSubmitted);
 
 public record ReviewDetailDto(
     int Id,
@@ -136,6 +140,7 @@ public record ReviewDetailDto(
     string? SelectedPeerName,
     string? SelfSummary,
     string? MidYearReflection,
+    DateTime? MidYearSubmittedAt,
     bool HalfYearlyReleased,
     DateTime? HalfYearlyDueDate,
     DateTime? DueDate,

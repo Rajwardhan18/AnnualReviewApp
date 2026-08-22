@@ -29,6 +29,10 @@ public class ReviewCycle
     public DateTime? HalfYearlyReleasedAt { get; set; }
     public DateTime? HalfYearlyDueDate { get; set; }
 
+    /// <summary>Admin has released final ratings to developers and ended the cycle.</summary>
+    public bool RatingsReleased { get; set; }
+    public DateTime? RatingsReleasedAt { get; set; }
+
     /// <summary>Only one cycle is typically active at a time.</summary>
     public bool IsActive { get; set; } = true;
 

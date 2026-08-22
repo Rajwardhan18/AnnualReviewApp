@@ -94,6 +94,7 @@ export default function ReviewEditorPage() {
   const professional = useMemo(() => goals.filter((g) => g.goalType === 'Professional'), [goals])
   const personal = useMemo(() => goals.filter((g) => g.goalType === 'Personal'), [goals])
   const readOnly = review?.status !== 'Draft'
+  const midYearSubmitted = !!review?.midYearSubmittedAt
 
   const updateGoal = (target: EditGoal, patch: Partial<EditGoal>) =>
     setGoals((gs) => gs.map((g) => (g === target ? { ...g, ...patch } : g)))
@@ -167,6 +168,27 @@ export default function ReviewEditorPage() {
     }
   }
 
+  async function submitMidYear() {
+    setErrors([]); setMessage(''); setBusy(true)
+    try {
+      const payload = {
+        goals: goals.filter((g) => g.id).map((g) => ({
+          goalId: g.id, status: g.status, completionPercentage: g.completionPercentage,
+          statusComment: g.statusComment ?? null, statusDate: g.statusDate || null,
+        })),
+        midYearReflection: midYear,
+      }
+      const updated = await post<ReviewDetail>(`/api/reviews/${reviewId}/submit-midyear`, payload)
+      setReview(updated)
+      setMessage('Your mid-year review has been submitted and is now locked.')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch (e: any) {
+      setErrors([e.message || 'Submit failed'])
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (loading) return <div className="loading">Loading…</div>
   if (!review) return <div className="empty">Review not found.</div>
 
@@ -223,27 +245,38 @@ export default function ReviewEditorPage() {
           </div>
         </div>
       ) : (
-        <div className="card" style={{ borderColor: 'var(--primary)' }}>
-          <h3>{review.halfYearlyReleased ? 'Half-yearly review' : 'Track goal progress'}</h3>
+        <div className="card" style={{ borderColor: midYearSubmitted ? 'var(--green)' : 'var(--primary)' }}>
+          <h3>
+            {review.halfYearlyReleased ? 'Half-yearly review' : 'Track goal progress'}
+            {midYearSubmitted && <span className="badge Completed" style={{ marginLeft: 8 }}>Submitted &amp; locked</span>}
+          </h3>
           <p className="section-hint" style={{ margin: 0 }}>
-            {review.halfYearlyReleased
-              ? <>The mid-year checkpoint is open{review.halfYearlyDueDate ? ` (due ${new Date(review.halfYearlyDueDate).toLocaleDateString()})` : ''}. Update your goal progress below and add a mid-year reflection. Manager &amp; peer reviews stay at year-end.</>
-              : <>This plan is submitted and locked, but you can update each goal's status, completion % and notes through the year.</>}
+            {midYearSubmitted
+              ? <>Your mid-year review was submitted on {new Date(review.midYearSubmittedAt!).toLocaleDateString()} and is now locked.</>
+              : review.halfYearlyReleased
+                ? <>The mid-year checkpoint is open{review.halfYearlyDueDate ? ` (due ${new Date(review.halfYearlyDueDate).toLocaleDateString()})` : ''}. Update your goal progress below, add a mid-year reflection, then submit. Manager &amp; peer reviews stay at year-end.</>
+                : <>This plan is submitted and locked, but you can update each goal's status, completion % and notes through the year.</>}
             {' '}
             <button className="ghost small" onClick={() => navigate(`/reviews/${reviewId}`)}>View full review →</button>
           </p>
           {review.halfYearlyReleased && (
             <div className="field" style={{ marginTop: 12 }}>
               <label>Mid-year reflection</label>
-              <textarea rows={3} value={midYear} onChange={(e) => setMidYear(e.target.value)}
+              <textarea rows={3} value={midYear} disabled={midYearSubmitted} onChange={(e) => setMidYear(e.target.value)}
                 placeholder="How is the year tracking? Wins, blockers, changes in focus…" />
             </div>
           )}
-          <div className="btn-row" style={{ marginTop: 12 }}>
-            <button disabled={busy} onClick={saveProgress}>
-              {review.halfYearlyReleased ? 'Save mid-year update' : 'Save goal progress'}
-            </button>
-          </div>
+          {!midYearSubmitted && (
+            <div className="btn-row" style={{ marginTop: 12 }}>
+              {review.halfYearlyReleased
+                ? <>
+                    <button className="secondary" disabled={busy} onClick={saveProgress}>Save progress</button>
+                    <button disabled={busy} onClick={submitMidYear}>Submit mid-year review</button>
+                    <span className="muted">Submitting locks your mid-year review.</span>
+                  </>
+                : <button disabled={busy} onClick={saveProgress}>Save goal progress</button>}
+            </div>
+          )}
         </div>
       )}
 
@@ -286,7 +319,7 @@ export default function ReviewEditorPage() {
           <h3>Professional Goals</h3>
           <p className="section-hint">Minimum {MIN_PROFESSIONAL} goals, each in the SMART template and tagged to a company trait.</p>
           {professional.map((g, i) => (
-            <GoalAccordion key={`pro-${i}`} goal={g} index={i} traits={traits} planReadOnly={readOnly}
+            <GoalAccordion key={`pro-${i}`} goal={g} index={i} traits={traits} planReadOnly={readOnly} progressLocked={midYearSubmitted}
               onChange={(patch) => updateGoal(g, patch)} onRemove={() => removeGoal(g)} />
           ))}
           {!readOnly && <button className="secondary" onClick={() => addGoal('Professional')}>+ Add professional goal</button>}
@@ -337,7 +370,7 @@ export default function ReviewEditorPage() {
           <h3>Personal Goals</h3>
           <p className="section-hint">Minimum {MIN_PERSONAL} goals, each in the SMART template and tagged to a company trait.</p>
           {personal.map((g, i) => (
-            <GoalAccordion key={`per-${i}`} goal={g} index={i} traits={traits} planReadOnly={readOnly}
+            <GoalAccordion key={`per-${i}`} goal={g} index={i} traits={traits} planReadOnly={readOnly} progressLocked={midYearSubmitted}
               onChange={(patch) => updateGoal(g, patch)} onRemove={() => removeGoal(g)} />
           ))}
           {!readOnly && <button className="secondary" onClick={() => addGoal('Personal')}>+ Add personal goal</button>}
@@ -427,11 +460,12 @@ function TextList({ items, setItems, readOnly, placeholder, addLabel, multiline 
   )
 }
 
-function GoalAccordion({ goal, index, traits, planReadOnly, onChange, onRemove }: {
+function GoalAccordion({ goal, index, traits, planReadOnly, progressLocked, onChange, onRemove }: {
   goal: EditGoal
   index: number
   traits: CompanyTrait[]
   planReadOnly: boolean
+  progressLocked?: boolean
   onChange: (patch: Partial<EditGoal>) => void
   onRemove: () => void
 }) {
@@ -488,29 +522,29 @@ function GoalAccordion({ goal, index, traits, planReadOnly, onChange, onRemove }
             </div>
           )}
 
-          {/* Requirement 6: progress tracking — editable even after submission */}
+          {/* Progress tracking — editable after submission, but locks once the mid-year review is submitted */}
           <div style={{ borderTop: '1px dashed var(--line)', marginTop: 12, paddingTop: 12 }}>
             <label style={{ marginBottom: 8 }}>Progress</label>
             <div className="grid-3">
               <div className="field">
                 <label>Status</label>
-                <select value={goal.status} onChange={(e) => onChange({ status: e.target.value as GoalStatus })}>
+                <select value={goal.status} disabled={progressLocked} onChange={(e) => onChange({ status: e.target.value as GoalStatus })}>
                   {STATUSES.map((st) => <option key={st} value={st}>{STATUS_LABEL[st]}</option>)}
                 </select>
               </div>
               <div className="field">
                 <label>Completion: {goal.completionPercentage}%</label>
-                <input type="range" min={0} max={100} step={5} value={goal.completionPercentage}
+                <input type="range" min={0} max={100} step={5} value={goal.completionPercentage} disabled={progressLocked}
                   onChange={(e) => onChange({ completionPercentage: Number(e.target.value) })} />
               </div>
               <div className="field">
                 <label>Date</label>
-                <input type="date" value={goal.statusDate ?? ''} onChange={(e) => onChange({ statusDate: e.target.value || null })} />
+                <input type="date" value={goal.statusDate ?? ''} disabled={progressLocked} onChange={(e) => onChange({ statusDate: e.target.value || null })} />
               </div>
             </div>
             <div className="field">
               <label>Progress comment</label>
-              <input value={goal.statusComment ?? ''} onChange={(e) => onChange({ statusComment: e.target.value })}
+              <input value={goal.statusComment ?? ''} disabled={progressLocked} onChange={(e) => onChange({ statusComment: e.target.value })}
                 placeholder="What's the latest on this goal?" />
             </div>
           </div>

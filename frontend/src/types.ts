@@ -30,6 +30,7 @@ export interface Cycle {
   dueDate?: string | null
   halfYearlyReleased: boolean
   halfYearlyDueDate?: string | null
+  ratingsReleased: boolean
 }
 
 export type NotificationType = 'PlanReleased' | 'HalfYearlyReleased' | 'ReviewerAssigned' | 'Reminder'
@@ -136,6 +137,9 @@ export interface ReviewSummary {
   roleName?: string | null
   status: ReviewStatus
   submittedAt?: string | null
+  halfYearlyReleased: boolean
+  midYearSubmitted: boolean
+  myAssessmentSubmitted?: boolean | null
 }
 
 export interface ReviewDetail {
@@ -154,6 +158,7 @@ export interface ReviewDetail {
   selectedPeerName?: string | null
   selfSummary?: string | null
   midYearReflection?: string | null
+  midYearSubmittedAt?: string | null
   halfYearlyReleased: boolean
   halfYearlyDueDate?: string | null
   dueDate?: string | null
@@ -200,6 +205,41 @@ export interface RatingsDashboard {
   curve: CurveStats
   developers: DeveloperRatingRow[]
 }
+
+export interface MyGoalProgress {
+  id: number
+  title: string
+  goalType: GoalType
+  status: GoalStatus
+  completionPercentage: number
+  target?: string | null
+}
+
+export interface MyPerformanceCycle {
+  reviewId: number
+  cycleId: number
+  cycleName: string
+  status: ReviewStatus
+  ratingsReleased: boolean
+  selfScore: number | null
+  peerScore: number | null
+  manager1Score: number | null
+  manager2Score: number | null
+  weightedFinal: number | null
+  overallAverage: number | null
+  percentile: number | null
+  band: string | null
+  teamAverage: number | null
+  goalCount: number
+  avgCompletion: number
+  completed: number
+  inProgress: number
+  notStarted: number
+  dropped: number
+  goals: MyGoalProgress[]
+}
+
+export interface MyPerformance { cycles: MyPerformanceCycle[] }
 
 export interface SavePlanRequest {
   selectedPeerId?: number | null

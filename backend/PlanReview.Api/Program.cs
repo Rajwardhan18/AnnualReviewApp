@@ -26,6 +26,12 @@ var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()!;
 builder.Services.AddSingleton(jwt);
 builder.Services.AddSingleton<TokenService>();
 
+// --- Email + notifications. ---
+var emailOptions = builder.Configuration.GetSection("Email").Get<EmailOptions>() ?? new EmailOptions();
+builder.Services.AddSingleton(emailOptions);
+builder.Services.AddSingleton<IEmailSender, EmailSender>();
+builder.Services.AddScoped<NotificationService>();
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {

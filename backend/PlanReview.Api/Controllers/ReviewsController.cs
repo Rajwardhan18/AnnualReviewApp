@@ -14,7 +14,12 @@ namespace PlanReview.Api.Controllers;
 public class ReviewsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public ReviewsController(AppDbContext db) => _db = db;
+    private readonly NotificationService _notify;
+    public ReviewsController(AppDbContext db, NotificationService notify)
+    {
+        _db = db;
+        _notify = notify;
+    }
 
     // ---------------- Lists ----------------
 
@@ -237,6 +242,12 @@ public class ReviewsController : ControllerBase
             goal.StatusDate = p.StatusDate;
         }
 
+        if (req.MidYearReflection is not null)
+        {
+            review.MidYearReflection = req.MidYearReflection;
+            review.MidYearUpdatedAt = DateTime.UtcNow;
+        }
+
         await _db.SaveChangesAsync();
         return await BuildDetail((await LoadFull(id))!);
     }
@@ -285,6 +296,13 @@ public class ReviewsController : ControllerBase
         // keep it as Draft — reviewers can only submit assessments once the developer submits.
         if (review.Status == ReviewStatus.Submitted)
             review.Status = ReviewStatus.InReview;
+
+        // Requirement 4: notify the assigned managers and peer.
+        var developerName = review.Developer?.FullName ?? "a developer";
+        foreach (var m in managers)
+            await _notify.ReviewerAssignedAsync(m, ReviewerType.Manager, review, developerName);
+        await _notify.ReviewerAssignedAsync(peer, ReviewerType.Peer, review, developerName);
+
         await _db.SaveChangesAsync();
 
         var reloaded = await LoadFull(id);
@@ -433,6 +451,10 @@ public class ReviewsController : ControllerBase
             r.SelectedPeerId,
             r.SelectedPeer?.FullName,
             r.SelfSummary,
+            r.MidYearReflection,
+            r.ReviewCycle?.HalfYearlyReleased ?? false,
+            r.ReviewCycle?.HalfYearlyDueDate,
+            r.ReviewCycle?.DueDate,
             r.Goals.Select(g => new GoalDto(g.Id, g.GoalType, g.Title, g.Specific, g.Measurable,
                 g.Achievable, g.Relevant, g.TimeBound, g.CompanyTraitId, g.CompanyTrait?.Name,
                 g.Status, g.CompletionPercentage, g.StatusComment, g.StatusDate)).ToList(),

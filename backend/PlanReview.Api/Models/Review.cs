@@ -34,6 +34,11 @@ public class Review
     [MaxLength(2000)]
     public string? SelfSummary { get; set; }
 
+    // Half-yearly (mid-year) self update.
+    [MaxLength(2000)]
+    public string? MidYearReflection { get; set; }
+    public DateTime? MidYearUpdatedAt { get; set; }
+
     public List<Goal> Goals { get; set; } = new();
     public List<Achievement> Achievements { get; set; } = new();
     public List<RndImprovement> RndImprovements { get; set; } = new();

@@ -154,6 +154,10 @@ export default function ReviewViewPage() {
         </div>
       )}
 
+      {review.midYearReflection && (
+        <div className="card"><h3>Mid-year reflection</h3><p style={{ margin: 0 }}>{review.midYearReflection}</p></div>
+      )}
+
       {review.selfSummary && (
         <div className="card"><h3>Self summary</h3><p style={{ margin: 0 }}>{review.selfSummary}</p></div>
       )}

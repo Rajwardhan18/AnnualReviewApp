@@ -26,6 +26,22 @@ export interface Cycle {
   id: number; name: string; year: number
   startDate: string; endDate: string
   isReleased: boolean; isActive: boolean; reviewCount: number
+  dueDate?: string | null
+  halfYearlyReleased: boolean
+  halfYearlyDueDate?: string | null
+}
+
+export type NotificationType = 'PlanReleased' | 'HalfYearlyReleased' | 'ReviewerAssigned' | 'Reminder'
+export interface AppNotification {
+  id: number
+  type: NotificationType
+  subject: string
+  body: string
+  reviewCycleId?: number | null
+  reviewId?: number | null
+  isRead: boolean
+  emailSent: boolean
+  createdAt: string
 }
 
 export interface Goal {
@@ -134,6 +150,10 @@ export interface ReviewDetail {
   selectedPeerId?: number | null
   selectedPeerName?: string | null
   selfSummary?: string | null
+  midYearReflection?: string | null
+  halfYearlyReleased: boolean
+  halfYearlyDueDate?: string | null
+  dueDate?: string | null
   goals: Goal[]
   achievements: Achievement[]
   rndImprovements: RndImprovement[]

@@ -23,6 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<ReviewReviewer> ReviewReviewers => Set<ReviewReviewer>();
     public DbSet<ReviewerAssessment> ReviewerAssessments => Set<ReviewerAssessment>();
     public DbSet<ReviewerSkillRating> ReviewerSkillRatings => Set<ReviewerSkillRating>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -73,6 +74,11 @@ public class AppDbContext : DbContext
         b.Entity<Achievement>()
             .HasOne(a => a.CompanyTrait).WithMany()
             .HasForeignKey(a => a.CompanyTraitId).OnDelete(DeleteBehavior.Restrict);
+
+        b.Entity<Notification>()
+            .HasOne(n => n.Recipient).WithMany()
+            .HasForeignKey(n => n.RecipientId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<Notification>().HasIndex(n => new { n.RecipientId, n.CreatedAt });
 
         b.Entity<RndImprovement>()
             .HasOne(r => r.Review).WithMany(rv => rv.RndImprovements)

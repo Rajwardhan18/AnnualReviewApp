@@ -38,3 +38,11 @@ public enum ReviewerType
     Manager = 0,
     Peer = 1
 }
+
+public enum NotificationType
+{
+    PlanReleased = 0,
+    HalfYearlyReleased = 1,
+    ReviewerAssigned = 2,
+    Reminder = 3
+}

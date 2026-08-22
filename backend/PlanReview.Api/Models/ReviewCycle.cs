@@ -21,6 +21,14 @@ public class ReviewCycle
     /// <summary>True once the cycle has been released to developers.</summary>
     public bool IsReleased { get; set; }
 
+    /// <summary>Target date for developers to complete/submit their annual plan.</summary>
+    public DateTime? DueDate { get; set; }
+
+    /// <summary>Half-yearly (mid-year) checkpoint.</summary>
+    public bool HalfYearlyReleased { get; set; }
+    public DateTime? HalfYearlyReleasedAt { get; set; }
+    public DateTime? HalfYearlyDueDate { get; set; }
+
     /// <summary>Only one cycle is typically active at a time.</summary>
     public bool IsActive { get; set; } = true;
 

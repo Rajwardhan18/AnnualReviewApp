@@ -120,6 +120,15 @@ AnnualReviewApp/
 - **Self-selected peer becomes a reviewer** — on submit, the developer's chosen peer is
   automatically added as a Peer reviewer, so their peer review is captured and visible to the
   admin without waiting for a separate admin assignment.
+- **Half-yearly checkpoint** — the admin can release a mid-year review on a cycle; developers
+  update their goal progress and add a **mid-year reflection**. Manager and peer assessments
+  stay at year-end.
+- **Notifications** — every developer is notified when the annual plan (with target dates and
+  reminders) or the half-yearly checkpoint is released, and assigned managers/peers are notified
+  on assignment. Notifications appear in-app (a bell with an unread badge) and are **also emailed
+  when SMTP is configured**. Email is opt-in via `appsettings.json` → `Email.Enabled` (default
+  `false`, so nothing is emailed until you add SMTP credentials); everything is still recorded
+  in-app in the meantime.
 - **Reviewer assignment (any time)** — from any review (admin → dashboard → *Open*), the admin
   assigns exactly 2 managers and 1 peer — even before the developer submits. Reviewers can only
   submit their assessment once the developer has submitted the plan.
@@ -165,6 +174,8 @@ goals, every role skill rated, all SMART fields present, and a peer selected.
 | `PUT /api/reviews/{id}/plan`, `POST …/submit` | Developer | Fill & submit plan |
 | `POST /api/reviews/{id}/assign` | Admin | Assign 2 managers + peer |
 | `POST /api/reviews/{id}/assessment` | Reviewer | Submit rating & feedback |
+| `POST /api/cycles/{id}/release-halfyearly` | Admin | Open the mid-year checkpoint + notify developers |
+| `GET /api/notifications/mine` \| `POST …/{id}/read` \| `read-all` | JWT | In-app notifications |
 
 Explore everything interactively at **http://localhost:5099/swagger**.
 

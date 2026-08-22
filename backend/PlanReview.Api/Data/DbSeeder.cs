@@ -97,11 +97,20 @@ public static class DbSeeder
                 Year = 2026,
                 StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 EndDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc),
+                DueDate = new DateTime(2026, 2, 15, 0, 0, 0, DateTimeKind.Utc),
                 IsActive = true,
                 IsReleased = false
             });
         }
 
         await db.SaveChangesAsync();
+
+        // Backfill a plan due date on any active cycle that doesn't have one yet.
+        var activeCycle = await db.ReviewCycles.FirstOrDefaultAsync(c => c.IsActive && c.DueDate == null);
+        if (activeCycle is not null)
+        {
+            activeCycle.DueDate = new DateTime(activeCycle.Year, 2, 15, 0, 0, 0, DateTimeKind.Utc);
+            await db.SaveChangesAsync();
+        }
     }
 }

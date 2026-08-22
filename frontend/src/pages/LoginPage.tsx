@@ -31,8 +31,8 @@ export default function LoginPage() {
         <AuthHero />
 
         <div className="auth-form">
-          <h1 className="auth-title">Sign in to ARISe</h1>
-          <p className="muted" style={{ marginTop: 0 }}>Welcome back — sign in to your account.</p>
+          <h1 className="auth-title" style={{ textAlign: 'center' }}>Welcome to ARISe</h1>
+          <p className="muted" style={{ marginTop: 0, textAlign: 'center' }}>To Infinity and Beyond</p>
           {error && <div className="error">{error}</div>}
           <form onSubmit={submit}>
             <div className="field">

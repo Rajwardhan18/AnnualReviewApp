@@ -80,9 +80,8 @@ export default function DashboardPage() {
             rows={mine}
             showDeveloper={false}
             actionFor={(r) => (
-              <Link className="btn small" to={r.status === 'Draft' ? `/reviews/${r.id}/edit` : `/reviews/${r.id}`}
-                style={{ color: '#fff' }}>
-                {r.status === 'Draft' ? 'Fill plan' : 'View'}
+              <Link className="btn small" to={`/reviews/${r.id}/edit`} style={{ color: '#fff' }}>
+                {r.status === 'Draft' ? 'Fill plan' : 'Update progress'}
               </Link>
             )}
           />

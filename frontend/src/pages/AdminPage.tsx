@@ -195,6 +195,7 @@ function CyclesTab() {
   const [year, setYear] = useState<number>(new Date().getFullYear())
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
+  const [due, setDue] = useState('')
   const { err, wrap } = useErr()
   const [msg, setMsg] = useState('')
   const load = () => get<Cycle[]>('/api/cycles').then(setCycles)
@@ -212,34 +213,56 @@ function CyclesTab() {
           <div className="field"><label>Year</label><input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} /></div>
           <div className="field"><label>Start date</label><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></div>
           <div className="field"><label>End date</label><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></div>
+          <div className="field"><label>Plan due date</label><input type="date" value={due} onChange={(e) => setDue(e.target.value)} /></div>
         </div>
         <button onClick={() => wrap(async () => {
-          await post('/api/cycles', { name, year, startDate: start || new Date().toISOString(), endDate: end || new Date().toISOString() })
-          setName(''); setMsg('Cycle created.'); load()
+          await post('/api/cycles', { name, year, startDate: start || new Date().toISOString(), endDate: end || new Date().toISOString(), dueDate: due || null })
+          setName(''); setDue(''); setMsg('Cycle created.'); load()
         })}>Create cycle</button>
       </div>
 
       <div className="card">
         <h2>Cycles</h2>
+        <div style={{ overflowX: 'auto' }}>
         <table>
-          <thead><tr><th>Name</th><th>Year</th><th>Reviews</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th>Due</th><th>Reviews</th><th>Annual</th><th>Half-yearly</th><th></th></tr></thead>
           <tbody>
             {cycles.map((c) => (
               <tr key={c.id}>
-                <td>{c.name}</td>
-                <td>{c.year}</td>
+                <td>{c.name} <span className="muted">· {c.year}</span></td>
+                <td>{c.dueDate ? new Date(c.dueDate).toLocaleDateString() : <span className="muted">—</span>}</td>
                 <td>{c.reviewCount}</td>
                 <td>{c.isReleased ? <span className="badge Completed">Released</span> : <span className="badge Draft">Not released</span>}</td>
+                <td>{c.halfYearlyReleased
+                  ? <span className="badge InProgress">Released{c.halfYearlyDueDate ? ` · due ${new Date(c.halfYearlyDueDate).toLocaleDateString()}` : ''}</span>
+                  : <span className="muted">—</span>}</td>
                 <td>
-                  <button className="small" onClick={() => wrap(async () => {
-                    const r = await post<{ reviewsCreated: number; totalDevelopers: number }>(`/api/cycles/${c.id}/release`)
-                    setMsg(`Released. ${r.reviewsCreated} new review(s) created for ${r.totalDevelopers} developer(s).`); load()
-                  })}>Release to developers</button>
+                  <div className="btn-row">
+                    {!c.isReleased && (
+                      <button className="small" onClick={() => wrap(async () => {
+                        const r = await post<{ reviewsCreated: number; totalDevelopers: number; notified: number }>(`/api/cycles/${c.id}/release`)
+                        setMsg(`Annual plan released. ${r.reviewsCreated} new review(s); ${r.notified} developer(s) notified.`); load()
+                      })}>Release annual</button>
+                    )}
+                    {c.isReleased && !c.halfYearlyReleased && (
+                      <button className="small secondary" onClick={() => wrap(async () => {
+                        const r = await post<{ notified: number }>(`/api/cycles/${c.id}/release-halfyearly`, { halfYearlyDueDate: `${c.year}-07-15` })
+                        setMsg(`Half-yearly review released; ${r.notified} developer(s) notified.`); load()
+                      })}>Release half-yearly</button>
+                    )}
+                    {c.isReleased && (
+                      <button className="small ghost" onClick={() => wrap(async () => {
+                        const r = await post<{ notified: number }>(`/api/cycles/${c.id}/release`)
+                        setMsg(`Re-notified ${r.notified} developer(s).`); load()
+                      })}>Re-notify</button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </>
   )

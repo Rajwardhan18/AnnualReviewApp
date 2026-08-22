@@ -42,6 +42,7 @@ export default function ReviewEditorPage() {
   const [ratings, setRatings] = useState<Record<number, SkillRatingInput>>({})
   const [peerId, setPeerId] = useState<number | ''>('')
   const [summary, setSummary] = useState('')
+  const [midYear, setMidYear] = useState('')
 
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -60,6 +61,7 @@ export default function ReviewEditorPage() {
       setPeers(p)
       setPeerId(r.selectedPeerId ?? '')
       setSummary(r.selfSummary ?? '')
+      setMidYear(r.midYearReflection ?? '')
 
       // Requirement 5: default to a single starter goal per section; users add the rest.
       if (r.goals.length > 0) {
@@ -147,6 +149,7 @@ export default function ReviewEditorPage() {
           goalId: g.id, status: g.status, completionPercentage: g.completionPercentage,
           statusComment: g.statusComment ?? null, statusDate: g.statusDate || null,
         })),
+        midYearReflection: review?.halfYearlyReleased ? midYear : null,
       }
       const updated = await put<ReviewDetail>(`/api/reviews/${reviewId}/progress`, payload)
       setReview(updated)
@@ -214,13 +217,25 @@ export default function ReviewEditorPage() {
         </div>
       ) : (
         <div className="card" style={{ borderColor: 'var(--primary)' }}>
-          <h3>Track goal progress</h3>
+          <h3>{review.halfYearlyReleased ? 'Half-yearly review' : 'Track goal progress'}</h3>
           <p className="section-hint" style={{ margin: 0 }}>
-            This plan is submitted and locked, but you can update each goal's status, completion % and notes through the year.
+            {review.halfYearlyReleased
+              ? <>The mid-year checkpoint is open{review.halfYearlyDueDate ? ` (due ${new Date(review.halfYearlyDueDate).toLocaleDateString()})` : ''}. Update your goal progress below and add a mid-year reflection. Manager &amp; peer reviews stay at year-end.</>
+              : <>This plan is submitted and locked, but you can update each goal's status, completion % and notes through the year.</>}
+            {' '}
             <button className="ghost small" onClick={() => navigate(`/reviews/${reviewId}`)}>View full review →</button>
           </p>
+          {review.halfYearlyReleased && (
+            <div className="field" style={{ marginTop: 12 }}>
+              <label>Mid-year reflection</label>
+              <textarea rows={3} value={midYear} onChange={(e) => setMidYear(e.target.value)}
+                placeholder="How is the year tracking? Wins, blockers, changes in focus…" />
+            </div>
+          )}
           <div className="btn-row" style={{ marginTop: 12 }}>
-            <button disabled={busy} onClick={saveProgress}>Save goal progress</button>
+            <button disabled={busy} onClick={saveProgress}>
+              {review.halfYearlyReleased ? 'Save mid-year update' : 'Save goal progress'}
+            </button>
           </div>
         </div>
       )}

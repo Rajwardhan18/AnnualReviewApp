@@ -141,9 +141,10 @@ AnnualReviewApp/
   self-progress (goal completion, status breakdown) always, and — once the admin releases
   ratings — their self / peer / manager scores, **overall average**, weighted final, percentile
   and performance **band** vs the team average (reviewer names hidden). `GET /api/performance/me`.
-- **Close the cycle** — the admin can **release ratings & end the cycle** once reviews are done
-  (`POST /cycles/{id}/close`); this reveals ratings on each developer's My Performance page and
-  notifies everyone.
+- **Release ratings & end cycle (separate)** — the admin can **release ratings**
+  (`POST /cycles/{id}/release-ratings`) to reveal them on My Performance, and separately
+  **end the cycle** (`POST /cycles/{id}/end`). Ending is only allowed once the half-yearly review
+  has been submitted by everyone and all manager & peer reviews are submitted.
 - **Notifications** — every developer is notified when the annual plan (with target dates and
   reminders) or the half-yearly checkpoint is released, and assigned managers/peers are notified
   on assignment. Notifications appear in-app (a bell with an unread badge) and are **also emailed

@@ -37,20 +37,18 @@ function CycleBlock({ c }: { c: MyPerformanceCycle }) {
         <>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
             <Stat label="Overall average" value={c.overallAverage ?? '—'} sub="mean of self, peer & manager ratings" />
-            <Stat label="Weighted final" value={c.weightedFinal ?? '—'} sub="10/20/30/40 weighting" />
-            <Stat label="Performance band" value={band ? <span className="badge" style={{ background: band.bg, color: band.fg, fontSize: 16, padding: '4px 12px' }}>{c.band}</span> : '—'}
-              sub={c.percentile != null ? `${c.percentile}th percentile` : undefined} />
+            <Stat label="Performance band" value={band ? <span className="badge" style={{ background: band.bg, color: band.fg, fontSize: 16, padding: '4px 12px' }}>{c.band}</span> : '—'} />
             <Stat label="Team average" value={c.teamAverage ?? '—'} sub="cohort mean for context" />
           </div>
           <div className="card">
             <h3>Rating breakdown</h3>
             <table>
-              <thead><tr><th>Source</th><th>Weight</th><th>Score</th></tr></thead>
+              <thead><tr><th>Source</th><th>Score</th></tr></thead>
               <tbody>
-                <tr><td>Self</td><td className="muted">10%</td><td>{c.selfScore ?? '—'}</td></tr>
-                <tr><td>Peer</td><td className="muted">20%</td><td>{c.peerScore ?? '—'}</td></tr>
-                <tr><td>Manager 1</td><td className="muted">30%</td><td>{c.manager1Score ?? '—'}</td></tr>
-                <tr><td>Manager 2</td><td className="muted">40%</td><td>{c.manager2Score ?? '—'}</td></tr>
+                <tr><td>Self</td><td>{c.selfScore ?? '—'}</td></tr>
+                <tr><td>Peer</td><td>{c.peerScore ?? '—'}</td></tr>
+                <tr><td>Manager 1</td><td>{c.manager1Score ?? '—'}</td></tr>
+                <tr><td>Manager 2</td><td>{c.manager2Score ?? '—'}</td></tr>
               </tbody>
             </table>
             <p className="section-hint" style={{ marginTop: 10, marginBottom: 0 }}>Reviewer identities are not shown.</p>

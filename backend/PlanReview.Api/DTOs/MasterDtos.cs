@@ -20,7 +20,7 @@ public record CycleDto(
     int Id, string Name, int Year, DateTime StartDate, DateTime EndDate,
     bool IsReleased, bool IsActive, int ReviewCount,
     DateTime? DueDate, bool HalfYearlyReleased, DateTime? HalfYearlyDueDate,
-    bool RatingsReleased);
+    bool RatingsReleased, bool Ended);
 
 public record CreateCycleRequest(
     [Required] string Name, [Required] int Year, DateTime StartDate, DateTime EndDate, DateTime? DueDate);

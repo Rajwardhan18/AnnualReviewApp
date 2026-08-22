@@ -31,6 +31,7 @@ export interface Cycle {
   halfYearlyReleased: boolean
   halfYearlyDueDate?: string | null
   ratingsReleased: boolean
+  ended: boolean
 }
 
 export type NotificationType = 'PlanReleased' | 'HalfYearlyReleased' | 'ReviewerAssigned' | 'Reminder'

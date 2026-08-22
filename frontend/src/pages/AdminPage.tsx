@@ -236,9 +236,12 @@ function CyclesTab() {
                 <td>{c.halfYearlyReleased
                   ? <span className="badge InProgress">Released{c.halfYearlyDueDate ? ` · due ${new Date(c.halfYearlyDueDate).toLocaleDateString()}` : ''}</span>
                   : <span className="muted">—</span>}</td>
-                <td>{c.ratingsReleased
-                  ? <span className="badge Completed">Released · cycle ended</span>
-                  : <span className="muted">—</span>}</td>
+                <td className="pill-row">
+                  {c.ratingsReleased
+                    ? <span className="badge Completed">Ratings released</span>
+                    : <span className="muted">—</span>}
+                  {c.ended && <span className="badge Dropped">Ended</span>}
+                </td>
                 <td>
                   <div className="btn-row">
                     {!c.isReleased && (
@@ -255,15 +258,15 @@ function CyclesTab() {
                     )}
                     {c.isReleased && !c.ratingsReleased && (
                       <button className="small" onClick={() => wrap(async () => {
-                        const r = await post<{ incompleteReviews: number; notified: number }>(`/api/cycles/${c.id}/close`)
-                        setMsg(`Ratings released & cycle ended. ${r.notified} developer(s) notified.${r.incompleteReviews ? ` (${r.incompleteReviews} review(s) were not yet completed.)` : ''}`); load()
-                      })}>Release ratings &amp; end cycle</button>
+                        const r = await post<{ notified: number }>(`/api/cycles/${c.id}/release-ratings`)
+                        setMsg(`Ratings released; ${r.notified} developer(s) notified.`); load()
+                      })}>Release ratings</button>
                     )}
-                    {c.isReleased && !c.ratingsReleased && (
-                      <button className="small ghost" onClick={() => wrap(async () => {
-                        const r = await post<{ notified: number }>(`/api/cycles/${c.id}/release`)
-                        setMsg(`Re-notified ${r.notified} developer(s).`); load()
-                      })}>Re-notify</button>
+                    {c.isReleased && !c.ended && (
+                      <button className="small danger" onClick={() => wrap(async () => {
+                        await post(`/api/cycles/${c.id}/end`)
+                        setMsg('Cycle ended.'); load()
+                      })}>End cycle</button>
                     )}
                   </div>
                 </td>

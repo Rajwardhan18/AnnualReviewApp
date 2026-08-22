@@ -24,7 +24,7 @@ public class CyclesController : ControllerBase
 
     private static CycleDto ToDto(ReviewCycle c, int reviewCount) => new(
         c.Id, c.Name, c.Year, c.StartDate, c.EndDate, c.IsReleased, c.IsActive, reviewCount,
-        c.DueDate, c.HalfYearlyReleased, c.HalfYearlyDueDate, c.RatingsReleased);
+        c.DueDate, c.HalfYearlyReleased, c.HalfYearlyDueDate, c.RatingsReleased, c.Ended);
 
     [HttpGet]
     public async Task<IEnumerable<CycleDto>> GetAll()
@@ -120,31 +120,70 @@ public class CyclesController : ControllerBase
     }
 
     /// <summary>
-    /// Requirement 4: release final ratings to developers and end the cycle. The developer's
-    /// performance dashboard only shows ratings once this is done.
+    /// Release final ratings to developers — they become visible on My Performance. This is a
+    /// separate step from ending the cycle.
     /// </summary>
     [Authorize(Roles = "Admin")]
-    [HttpPost("{id:int}/close")]
-    public async Task<ActionResult> Close(int id)
+    [HttpPost("{id:int}/release-ratings")]
+    public async Task<ActionResult> ReleaseRatings(int id)
     {
         var cycle = await _db.ReviewCycles.FindAsync(id);
         if (cycle is null) return NotFound();
         if (!cycle.IsReleased)
-            return BadRequest(new { message = "Release the annual plan before closing the cycle." });
-
-        var reviews = await _db.Reviews.Where(r => r.ReviewCycleId == id).ToListAsync();
-        var incomplete = reviews.Count(r => r.Status != ReviewStatus.Completed);
+            return BadRequest(new { message = "Release the annual plan before releasing ratings." });
+        if (cycle.RatingsReleased)
+            return BadRequest(new { message = "Ratings have already been released." });
 
         cycle.RatingsReleased = true;
         cycle.RatingsReleasedAt = DateTime.UtcNow;
-        cycle.IsActive = false;
 
-        // Notify each developer that their ratings are available.
         var developers = await _db.Users.Where(u => u.UserType == UserType.Developer && u.IsActive).ToListAsync();
         foreach (var dev in developers)
             await _notify.RatingsReleasedAsync(dev, cycle);
 
         await _db.SaveChangesAsync();
-        return Ok(new { ratingsReleased = true, cycleEnded = true, incompleteReviews = incomplete, notified = developers.Count });
+        return Ok(new { ratingsReleased = true, notified = developers.Count });
+    }
+
+    /// <summary>
+    /// End the cycle. Only allowed once the half-yearly review has been submitted by everyone and
+    /// all manager &amp; peer reviews have been submitted (all reviews Completed).
+    /// </summary>
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id:int}/end")]
+    public async Task<ActionResult> End(int id)
+    {
+        var cycle = await _db.ReviewCycles.FindAsync(id);
+        if (cycle is null) return NotFound();
+        if (!cycle.IsReleased)
+            return BadRequest(new { message = "Release the annual plan before ending the cycle." });
+        if (cycle.Ended)
+            return BadRequest(new { message = "This cycle has already ended." });
+
+        var reviews = await _db.Reviews.Where(r => r.ReviewCycleId == id)
+            .Include(r => r.Reviewers).ToListAsync();
+        var active = reviews.Where(r => r.Status != ReviewStatus.Draft).ToList();
+
+        var errors = new List<string>();
+        if (!cycle.HalfYearlyReleased)
+            errors.Add("The half-yearly review has not been released.");
+        else
+        {
+            var midYearPending = active.Count(r => r.MidYearSubmittedAt is null);
+            if (midYearPending > 0)
+                errors.Add($"{midYearPending} developer(s) have not submitted their mid-year review.");
+        }
+        var reviewsPending = active.Count(r => r.Reviewers.Count > 0 && r.Status != ReviewStatus.Completed);
+        if (reviewsPending > 0)
+            errors.Add($"{reviewsPending} review(s) still have pending manager/peer assessments.");
+
+        if (errors.Count > 0)
+            return BadRequest(new { message = "The cycle cannot be ended yet.", errors });
+
+        cycle.Ended = true;
+        cycle.EndedAt = DateTime.UtcNow;
+        cycle.IsActive = false;
+        await _db.SaveChangesAsync();
+        return Ok(new { ended = true });
     }
 }

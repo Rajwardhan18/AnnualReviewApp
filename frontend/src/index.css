@@ -191,7 +191,7 @@ tr:last-child td { border-bottom: none; }
 
 /* Brand / hero panel */
 .auth-hero {
-  flex: 1 1 46%;
+  flex: 1 1 50%;
   background:
     radial-gradient(420px 200px at 80% 0%, rgba(232,169,60,0.18), transparent 70%),
     linear-gradient(160deg, #0b2a22 0%, #0e5a3d 62%, #12855a 100%);
@@ -210,7 +210,7 @@ tr:last-child td { border-bottom: none; }
 .hero-scene { margin-top: auto; padding-top: 20px; }
 .office-sketch { width: 100%; height: auto; display: block; }
 .hero-foot { display: flex; align-items: center; gap: 8px; color: rgba(255, 255, 255, 0.7); font-size: 12px; padding-top: 16px; }
-.auth-form { flex: 1 1 54%; padding: 34px 32px 30px; }
+.auth-form { flex: 1 1 50%; padding: 34px 32px 30px; }
 .auth-title { margin: 0; font-size: 22px; }
 @media (max-width: 720px) {
   .auth-card { flex-direction: column; }

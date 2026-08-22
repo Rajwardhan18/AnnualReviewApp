@@ -13,6 +13,7 @@ export interface User {
   functionName?: string | null
   roleId?: number | null
   roleName?: string | null
+  isActive: boolean
 }
 
 export interface AuthResponse { token: string; user: User }

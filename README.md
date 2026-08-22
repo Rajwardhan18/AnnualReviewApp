@@ -99,6 +99,11 @@ AnnualReviewApp/
 - **Admin user management** — the **Users** page (admin) lists every registered user with
   type/function/role and creates Developers (with function + role), Managers, and Admins
   directly (`POST /api/users`). Self-registration remains available for Developers/Managers.
+  Admins can **activate/deactivate** any user (`PUT /api/users/{id}/active`) — deactivated users
+  cannot sign in and are excluded from peer/manager pickers and cycle releases (you cannot
+  deactivate your own account).
+- **Interface** — a collapsible sidebar with **minimalist flat line icons**, and content laid out
+  **full-width** to use the whole space beside the sidebar.
 - **Collapsible sidebar** — the left nav collapses to an icon rail (state persisted); it
   auto-collapses on narrow screens.
 - **Tabbed review** — the plan editor and review view present **Professional Goals**,

@@ -3,8 +3,9 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { get } from '../api/client'
 import AriseLogo from './AriseLogo'
+import { Icon, type IconName } from './icons'
 
-interface NavItem { to: string; label: string; icon: string; end?: boolean; badge?: number }
+interface NavItem { to: string; label: string; icon: IconName; end?: boolean; badge?: number }
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
@@ -35,13 +36,13 @@ export default function Layout({ children }: { children: ReactNode }) {
   }
 
   const items: NavItem[] = [
-    { to: '/', label: 'Dashboard', icon: '▦', end: true },
-    { to: '/notifications', label: 'Notifications', icon: '🔔', badge: unread },
+    { to: '/', label: 'Dashboard', icon: 'dashboard', end: true },
+    { to: '/notifications', label: 'Notifications', icon: 'bell', badge: unread },
   ]
   if (user?.userType === 'Admin') {
-    items.push({ to: '/admin/ratings', label: 'Ratings', icon: '📊' })
-    items.push({ to: '/admin/users', label: 'Users', icon: '👥' })
-    items.push({ to: '/admin', label: 'Organization', icon: '⚙︎' })
+    items.push({ to: '/admin/ratings', label: 'Ratings', icon: 'chart' })
+    items.push({ to: '/admin/users', label: 'Users', icon: 'users' })
+    items.push({ to: '/admin', label: 'Organization', icon: 'org' })
   }
 
   const initials = (user?.fullName ?? '?')
@@ -53,7 +54,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         <div className="side-brand">
           <AriseLogo size={26} wordSize={20} wordColor="var(--brand-ink)" showWord={!collapsed} />
           <button className="ghost small side-toggle" onClick={toggle} title={collapsed ? 'Expand' : 'Collapse'}>
-            {collapsed ? '»' : '«'}
+            <Icon name={collapsed ? 'chevron-right' : 'chevron-left'} size={16} />
           </button>
         </div>
 
@@ -62,7 +63,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             <NavLink key={it.to} to={it.to} end={it.end}
               className={({ isActive }) => `side-link${isActive ? ' active' : ''}`}
               title={collapsed ? it.label : undefined}>
-              <span className="side-icon">{it.icon}</span>
+              <span className="side-icon"><Icon name={it.icon} size={19} /></span>
               {!collapsed && <span className="side-label">{it.label}</span>}
               {it.badge ? <span className="nav-badge">{it.badge}</span> : null}
             </NavLink>
@@ -80,7 +81,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             )}
           </div>
           <button className="secondary small side-logout" onClick={onLogout} title="Log out">
-            <span className="side-icon">⎋</span>{!collapsed && <span>Log out</span>}
+            <span className="side-icon"><Icon name="logout" size={17} /></span>{!collapsed && <span>Log out</span>}
           </button>
         </div>
       </aside>

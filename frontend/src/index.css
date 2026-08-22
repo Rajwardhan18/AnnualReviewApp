@@ -91,7 +91,9 @@ a:hover { text-decoration: underline; }
 .side-link.active { background: var(--primary-soft); color: var(--primary-dark); }
 .nav-badge { margin-left: auto; background: var(--accent); color: #3a2a00; font-size: 11px; font-weight: 700; min-width: 18px; height: 18px; border-radius: 999px; display: inline-grid; place-items: center; padding: 0 5px; }
 .app-shell.collapsed .nav-badge { position: absolute; top: 5px; right: 9px; margin: 0; min-width: 15px; height: 15px; font-size: 9px; padding: 0 3px; }
-.side-icon { width: 20px; text-align: center; flex: 0 0 auto; font-size: 15px; }
+.side-icon { width: 20px; flex: 0 0 auto; display: inline-grid; place-items: center; color: var(--muted); }
+.side-link.active .side-icon { color: var(--primary-dark); }
+.side-link:hover .side-icon { color: var(--ink); }
 .app-shell.collapsed .side-link { justify-content: center; padding: 10px 0; }
 
 .side-foot { border-top: 1px solid var(--line); padding: 12px 12px; display: flex; flex-direction: column; gap: 10px; }
@@ -111,7 +113,8 @@ a:hover { text-decoration: underline; }
   .side-link { justify-content: center; padding: 10px 0; }
 }
 
-.container { max-width: 1040px; margin: 0 auto; padding: 28px 24px 64px; }
+/* Full-width content — use the entire space beside the sidebar. */
+.container { max-width: none; margin: 0; padding: 28px clamp(20px, 3vw, 44px) 72px; }
 .page-head { margin-bottom: 20px; }
 .page-head h1 { margin: 0 0 4px; font-size: 22px; }
 .page-head p { margin: 0; color: var(--muted); }

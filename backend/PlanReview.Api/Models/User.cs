@@ -17,6 +17,9 @@ public class User
 
     public UserType UserType { get; set; }
 
+    /// <summary>Deactivated users cannot sign in.</summary>
+    public bool IsActive { get; set; } = true;
+
     // Developer-only attributes. Null for Managers / Admins.
     public int? FunctionId { get; set; }
     public Function? Function { get; set; }

@@ -41,4 +41,8 @@ public record UserDto(
     int? FunctionId,
     string? FunctionName,
     int? RoleId,
-    string? RoleName);
+    string? RoleName,
+    bool IsActive);
+
+/// <summary>Admin toggles a user's active state.</summary>
+public record SetUserActiveRequest(bool IsActive);

@@ -105,6 +105,15 @@ public static class DbSeeder
 
         await db.SaveChangesAsync();
 
+        // One-time fix: the IsActive column was added defaulting to false for existing rows.
+        // If every user ended up inactive, reactivate them all (won't undo real deactivations
+        // because those leave other users active).
+        if (await db.Users.AnyAsync() && !await db.Users.AnyAsync(u => u.IsActive))
+        {
+            foreach (var u in await db.Users.ToListAsync()) u.IsActive = true;
+            await db.SaveChangesAsync();
+        }
+
         // Backfill a plan due date on any active cycle that doesn't have one yet.
         var activeCycle = await db.ReviewCycles.FirstOrDefaultAsync(c => c.IsActive && c.DueDate == null);
         if (activeCycle is not null)

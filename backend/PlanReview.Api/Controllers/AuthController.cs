@@ -69,6 +69,8 @@ public class AuthController : ControllerBase
 
         if (user is null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
             return Unauthorized(new { message = "Invalid email or password." });
+        if (!user.IsActive)
+            return Unauthorized(new { message = "Your account has been deactivated. Please contact an administrator." });
 
         return new AuthResponse(_tokens.CreateToken(user), ToDto(user));
     }
@@ -96,5 +98,5 @@ public class AuthController : ControllerBase
 
     private static UserDto ToDto(User u) => new(
         u.Id, u.FullName, u.Email, u.UserType,
-        u.FunctionId, u.Function?.Name, u.RoleId, u.Role?.Name);
+        u.FunctionId, u.Function?.Name, u.RoleId, u.Role?.Name, u.IsActive);
 }

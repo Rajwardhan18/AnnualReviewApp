@@ -64,7 +64,7 @@ public class CyclesController : ControllerBase
         var cycle = await _db.ReviewCycles.FindAsync(id);
         if (cycle is null) return NotFound();
 
-        var developers = await _db.Users.Where(u => u.UserType == UserType.Developer).ToListAsync();
+        var developers = await _db.Users.Where(u => u.UserType == UserType.Developer && u.IsActive).ToListAsync();
         var existing = (await _db.Reviews.Where(r => r.ReviewCycleId == id)
             .Select(r => r.DeveloperId).ToListAsync()).ToHashSet();
 
@@ -111,7 +111,7 @@ public class CyclesController : ControllerBase
         cycle.HalfYearlyDueDate = req.HalfYearlyDueDate is null
             ? null : DateTime.SpecifyKind(req.HalfYearlyDueDate.Value, DateTimeKind.Utc);
 
-        var developers = await _db.Users.Where(u => u.UserType == UserType.Developer).ToListAsync();
+        var developers = await _db.Users.Where(u => u.UserType == UserType.Developer && u.IsActive).ToListAsync();
         foreach (var dev in developers)
             await _notify.HalfYearlyReleasedAsync(dev, cycle);
 

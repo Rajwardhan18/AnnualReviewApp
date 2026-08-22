@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { get, post, ApiError } from '../api/client'
+import { get, post, put, ApiError } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
 import type { FunctionItem, Role, User, UserType } from '../types'
 
 const TYPE_BADGE: Record<UserType, string> = {
@@ -9,15 +10,28 @@ const TYPE_BADGE: Record<UserType, string> = {
 }
 
 export default function UsersPage() {
+  const { user: me } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [filter, setFilter] = useState<'' | UserType>('')
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [resetTarget, setResetTarget] = useState<User | null>(null)
   const [msg, setMsg] = useState('')
+  const [err, setErr] = useState('')
 
   const load = () => get<User[]>('/api/users').then(setUsers)
   useEffect(() => { load().finally(() => setLoading(false)) }, [])
+
+  const setActive = async (u: User, isActive: boolean) => {
+    setErr(''); setMsg('')
+    try {
+      const updated = await put<User>(`/api/users/${u.id}/active`, { isActive })
+      setUsers((xs) => xs.map((x) => (x.id === u.id ? updated : x)))
+      setMsg(`${updated.fullName} is now ${isActive ? 'active' : 'deactivated'}.`)
+    } catch (e: any) {
+      setErr(e instanceof ApiError ? e.message : 'Failed to update user')
+    }
+  }
 
   const shown = filter === '' ? users : users.filter((u) => u.userType === filter)
 
@@ -45,6 +59,7 @@ export default function UsersPage() {
       </div>
 
       {msg && <div className="success">{msg}</div>}
+      {err && <div className="error">{err}</div>}
       {showForm && <AddUserForm onCreated={() => { load(); setShowForm(false) }} />}
       {resetTarget && (
         <ResetPasswordForm user={resetTarget}
@@ -56,22 +71,28 @@ export default function UsersPage() {
         {loading ? <div className="loading">Loading…</div> : (
           <table>
             <thead>
-              <tr><th>Name</th><th>Email</th><th>Type</th><th>Function</th><th>Role</th><th></th></tr>
+              <tr><th>Name</th><th>Email</th><th>Type</th><th>Function</th><th>Role</th><th>Status</th><th></th></tr>
             </thead>
             <tbody>
               {shown.map((u) => (
-                <tr key={u.id}>
+                <tr key={u.id} style={{ opacity: u.isActive ? 1 : 0.55 }}>
                   <td><strong>{u.fullName}</strong></td>
                   <td className="muted">{u.email}</td>
                   <td><span className={`badge ${TYPE_BADGE[u.userType]}`}>{u.userType}</span></td>
                   <td>{u.functionName ?? <span className="muted">—</span>}</td>
                   <td>{u.roleName ?? <span className="muted">—</span>}</td>
+                  <td><span className={`badge ${u.isActive ? 'Completed' : 'Dropped'}`}>{u.isActive ? 'Active' : 'Inactive'}</span></td>
                   <td style={{ textAlign: 'right' }}>
-                    <button className="secondary small" onClick={() => { setMsg(''); setResetTarget(u) }}>Reset password</button>
+                    <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
+                      {u.isActive
+                        ? <button className="danger small" disabled={u.id === me?.id} title={u.id === me?.id ? "You can't deactivate yourself" : undefined} onClick={() => setActive(u, false)}>Deactivate</button>
+                        : <button className="secondary small" onClick={() => setActive(u, true)}>Activate</button>}
+                      <button className="secondary small" onClick={() => { setMsg(''); setErr(''); setResetTarget(u) }}>Reset password</button>
+                    </div>
                   </td>
                 </tr>
               ))}
-              {shown.length === 0 && <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>No users.</td></tr>}
+              {shown.length === 0 && <tr><td colSpan={7} className="muted" style={{ textAlign: 'center' }}>No users.</td></tr>}
             </tbody>
           </table>
         )}

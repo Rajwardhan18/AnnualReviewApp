@@ -75,25 +75,41 @@ public class UsersController : ControllerBase
         return Ok(new { message = $"Password reset for {user.FullName}." });
     }
 
-    // Managers available for assignment (admin) or general reference.
+    // Admin: activate or deactivate a user (deactivated users cannot sign in).
+    [Authorize(Roles = "Admin")]
+    [HttpPut("{id:int}/active")]
+    public async Task<ActionResult<UserDto>> SetActive(int id, SetUserActiveRequest req)
+    {
+        var user = await _db.Users.Include(u => u.Function).Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Id == id);
+        if (user is null) return NotFound(new { message = "User not found." });
+        if (!req.IsActive && user.Id == User.GetUserId())
+            return BadRequest(new { message = "You cannot deactivate your own account." });
+
+        user.IsActive = req.IsActive;
+        await _db.SaveChangesAsync();
+        return ToDto(user);
+    }
+
+    // Active managers available for assignment.
     [HttpGet("managers")]
     public async Task<IEnumerable<UserDto>> GetManagers() =>
-        await _db.Users.Where(u => u.UserType == UserType.Manager)
+        await _db.Users.Where(u => u.UserType == UserType.Manager && u.IsActive)
             .OrderBy(u => u.FullName).Select(u => ToDto(u)).ToListAsync();
 
-    // Potential peers for the current developer: other developers, excluding self.
+    // Potential peers for the current developer: other active developers, excluding self.
     [HttpGet("peers")]
     public async Task<IEnumerable<UserDto>> GetPeers()
     {
         var me = User.GetUserId();
         return await _db.Users
             .Include(u => u.Function).Include(u => u.Role)
-            .Where(u => u.UserType == UserType.Developer && u.Id != me)
+            .Where(u => u.UserType == UserType.Developer && u.IsActive && u.Id != me)
             .OrderBy(u => u.FullName).Select(u => ToDto(u)).ToListAsync();
     }
 
     private static UserDto ToDto(User u) => new(
         u.Id, u.FullName, u.Email, u.UserType,
         u.FunctionId, u.Function != null ? u.Function.Name : null,
-        u.RoleId, u.Role != null ? u.Role.Name : null);
+        u.RoleId, u.Role != null ? u.Role.Name : null, u.IsActive);
 }

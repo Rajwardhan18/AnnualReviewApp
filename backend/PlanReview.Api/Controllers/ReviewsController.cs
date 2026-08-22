@@ -484,14 +484,19 @@ public class ReviewsController : ControllerBase
                 .Select(rs => new SkillDto(rs.Skill!.Id, rs.Skill.Name, rs.Skill.Category))
                 .ToListAsync();
 
-        // Requirement 4: mask reviewer identities from the developer (the review owner).
+        // Managers ordered by weight: index 0 = Manager 1, index 1 = Manager 2.
         var me = User.GetUserId();
+        var orderedMgrs = r.Reviewers.Where(x => x.ReviewerType == ReviewerType.Manager)
+            .OrderBy(x => x.Weight).ToList();
+        var myMgrIdx = orderedMgrs.FindIndex(x => x.ReviewerId == me);
+        int? myManagerSlot = myMgrIdx >= 0 ? myMgrIdx + 1 : null;
+
+        // Requirement 4: mask reviewer identities from the developer (the review owner).
         var anon = r.DeveloperId == me;
         var labelById = new Dictionary<int, string>();
         if (anon)
         {
-            var mgrs = r.Reviewers.Where(x => x.ReviewerType == ReviewerType.Manager).OrderBy(x => x.Weight).ToList();
-            for (var i = 0; i < mgrs.Count; i++) labelById[mgrs[i].ReviewerId] = $"Manager {i + 1}";
+            for (var i = 0; i < orderedMgrs.Count; i++) labelById[orderedMgrs[i].ReviewerId] = $"Manager {i + 1}";
             foreach (var p in r.Reviewers.Where(x => x.ReviewerType == ReviewerType.Peer))
                 labelById[p.ReviewerId] = "Peer";
         }
@@ -530,7 +535,8 @@ public class ReviewsController : ControllerBase
                 r.Assessments.Any(a => a.ReviewerId == rr.ReviewerId && a.SubmittedAt != null))).ToList(),
             r.Assessments.Select(a => new AssessmentDto(a.Id, a.ReviewerId, RevName(a.ReviewerId, a.Reviewer?.FullName ?? ""), a.ReviewerType,
                 a.OverallRating, a.Strengths, a.Improvements, a.SubmittedAt,
-                a.SkillRatings.Select(sr => new ReviewerSkillRatingDto(sr.SkillId, sr.Skill?.Name ?? "", sr.Rating)).ToList())).ToList());
+                a.SkillRatings.Select(sr => new ReviewerSkillRatingDto(sr.SkillId, sr.Skill?.Name ?? "", sr.Rating)).ToList())).ToList(),
+            myManagerSlot);
     }
 
     private static ReviewSummaryDto ToSummary(Review r) => new(

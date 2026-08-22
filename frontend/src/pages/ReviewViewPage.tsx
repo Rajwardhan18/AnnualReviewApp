@@ -236,10 +236,21 @@ function GoalView({ g }: { g: Goal }) {
 }
 
 function AchievementRatingForm({ review, onDone }: { review: ReviewDetail; onDone: () => Promise<any> }) {
+  const slot = review.myManagerSlot
   const [ratings, setRatings] = useState<Record<number, number>>({})
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
+
+  // Pre-fill each star with this manager's own current rating for the achievement.
+  useEffect(() => {
+    const init: Record<number, number> = {}
+    for (const a of review.achievements) {
+      const mine = slot === 2 ? a.manager2Rating : a.manager1Rating
+      if (mine != null) init[a.id] = mine
+    }
+    setRatings(init)
+  }, [review, slot])
 
   const submit = async () => {
     setErr(''); setMsg('')

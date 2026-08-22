@@ -146,4 +146,6 @@ public record ReviewDetailDto(
     List<SkillRatingDto> SkillRatings,
     List<SkillDto> RoleSkills,
     List<ReviewerDto> Reviewers,
-    List<AssessmentDto> Assessments);
+    List<AssessmentDto> Assessments,
+    /// <summary>Which manager slot the caller occupies (1 or 2), else null.</summary>
+    int? MyManagerSlot);

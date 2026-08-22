@@ -164,6 +164,7 @@ export interface ReviewDetail {
   roleSkills: Skill[]
   reviewers: Reviewer[]
   assessments: Assessment[]
+  myManagerSlot?: number | null
 }
 
 // ---- Ratings dashboard ----

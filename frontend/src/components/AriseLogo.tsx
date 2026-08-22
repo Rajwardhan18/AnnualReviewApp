@@ -21,9 +21,9 @@ export default function AriseLogo({ size = 40, wordSize, wordColor = '#ffffff', 
         xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ARISe" style={{ display: 'block' }}>
         <defs>
           <linearGradient id="ariseTile" x1="14" y1="90" x2="88" y2="12" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="#0b7c56" />
-            <stop offset="0.55" stopColor="#12b981" />
-            <stop offset="1" stopColor="#5fe0a8" />
+            <stop offset="0" stopColor="#0a5a2f" />
+            <stop offset="0.55" stopColor="#128a3d" />
+            <stop offset="1" stopColor="#29ab5a" />
           </linearGradient>
           <radialGradient id="ariseGlow" cx="82" cy="18" r="46" gradientUnits="userSpaceOnUse">
             <stop offset="0" stopColor="#f6c445" stopOpacity="0.6" />

@@ -1,5 +1,6 @@
 import AriseLogo from './AriseLogo'
 import SparrowLogo from './SparrowLogo'
+import OfficeSketch from './OfficeSketch'
 
 const PILLARS = [
   { word: 'Achieve', color: 'var(--p-achieve)' },
@@ -25,6 +26,7 @@ export default function AuthHero() {
           </li>
         ))}
       </ul>
+      <div className="hero-scene"><OfficeSketch /></div>
       <div className="hero-foot">
         <span>by</span>
         <SparrowLogo height={16} wordColor="rgba(255,255,255,0.85)" facetStroke="rgba(255,255,255,0.18)" />

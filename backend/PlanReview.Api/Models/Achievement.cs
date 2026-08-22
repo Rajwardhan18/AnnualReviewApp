@@ -22,9 +22,13 @@ public class Achievement
     [MaxLength(2000)]
     public string WorkDescription { get; set; } = string.Empty;
 
-    /// <summary>Rating the manager gave for this project last year (1-10).</summary>
+    /// <summary>Rating from the first assigned manager (set only by that manager).</summary>
     [Range(1, 10)]
-    public int? ManagerRating { get; set; }
+    public int? Manager1Rating { get; set; }
+
+    /// <summary>Rating from the second assigned manager (set only by that manager).</summary>
+    [Range(1, 10)]
+    public int? Manager2Rating { get; set; }
 
     // Optional company-trait tag.
     public int? CompanyTraitId { get; set; }

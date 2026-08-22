@@ -18,10 +18,11 @@ public record GoalDto(
     GoalStatus Status,
     int CompletionPercentage,
     string? StatusComment,
-    DateTime? StatusDate);
+    DateTime? StatusDate,
+    string? Target);
 
 // Draft-friendly: only the goal type is required so partial goals can be saved as a draft.
-// Full completeness (all SMART fields + trait) is enforced on submit.
+// Professional goals use SMART + trait; Personal goals are simple (Title + Target).
 public record GoalInput(
     [Required] GoalType GoalType,
     string? Title,
@@ -34,7 +35,8 @@ public record GoalInput(
     GoalStatus? Status,
     int? CompletionPercentage,
     string? StatusComment,
-    DateTime? StatusDate);
+    DateTime? StatusDate,
+    string? Target);
 
 // ---- Goal progress (updatable any time by the developer) ----
 public record GoalProgressInput(
@@ -45,13 +47,17 @@ public record GoalProgressInput(
     DateTime? StatusDate);
 public record SaveProgressRequest(List<GoalProgressInput> Goals, string? MidYearReflection);
 
-// ---- Last-year key achievement (project delivered last year) ----
+// ---- Previous-year achievement (project delivered last year) ----
 public record AchievementDto(
     int Id, string ProjectName, string ClientName, string WorkDescription,
-    int? ManagerRating, int? CompanyTraitId, string? CompanyTraitName);
+    int? Manager1Rating, int? Manager2Rating, int? CompanyTraitId, string? CompanyTraitName);
+// Developers set only the project details — manager ratings are set by managers.
 public record AchievementInput(
-    string? ProjectName, string? ClientName, string? WorkDescription,
-    int? ManagerRating, int? CompanyTraitId);
+    string? ProjectName, string? ClientName, string? WorkDescription, int? CompanyTraitId);
+
+// A manager rating the developer's previous-year achievements.
+public record AchievementRatingInput([Required] int AchievementId, [Range(1, 10)] int Rating);
+public record SaveAchievementRatingsRequest(List<AchievementRatingInput> Ratings);
 
 // ---- R&D improvements & future skills (skill-assessment section) ----
 public record RndImprovementDto(int Id, string Description);

@@ -115,8 +115,14 @@ AnnualReviewApp/
   Progress is editable through the year even after the plan is locked (`PUT /reviews/{id}/progress`).
 - **Skill-assessment extras** — the Skill Assessment tab also captures **Initiatives Undertaken**
   (research contributions) and **Future Skills to Acquire**.
-- **Last-year key achievements** — a tab of projects delivered last year, each with **project
-  name, client, work description, the manager's rating**, and an optional company trait.
+- **Previous Year Achievements** — a tab of projects delivered last year (**minimum 5**), each
+  with project name, client, work description and an optional trait. The developer cannot rate
+  them — each of the **two assigned managers rates every achievement** (Manager 1 and Manager 2
+  slots), and the ratings show back read-only to the developer.
+- **Personal goals are simple** — a title, a **target**, and progress (status / completion %);
+  the SMART template applies only to professional goals.
+- **Reviewer anonymity** — the developer never sees who their reviewers are: reviewer and
+  assessment authorship are masked server-side to "Manager 1 / Manager 2 / Peer".
 - **Self-selected peer becomes a reviewer** — on submit, the developer's chosen peer is
   automatically added as a Peer reviewer, so their peer review is captured and visible to the
   admin without waiting for a separate admin assignment.

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { get, post, ApiError } from '../api/client'
+import { get, post, put, ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import type { Goal, ReviewDetail, User } from '../types'
 import StarRating from '../components/StarRating'
@@ -81,7 +81,7 @@ export default function ReviewViewPage() {
           Personal Goals <span className="muted">({personal.length})</span>
         </button>
         <button className={tab === 'achievements' ? 'active' : ''} onClick={() => setTab('achievements')}>
-          Key Achievements <span className="muted">({review.achievements.length})</span>
+          Previous Year Achievements <span className="muted">({review.achievements.length})</span>
         </button>
       </div>
 
@@ -135,7 +135,7 @@ export default function ReviewViewPage() {
 
       {tab === 'achievements' && (
         <div className="card">
-          <h3>Last Year — Key Achievements ({review.achievements.length})</h3>
+          <h3>Previous Year Achievements ({review.achievements.length})</h3>
           {review.achievements.length === 0 ? <p className="muted">No achievements recorded.</p> : (
             review.achievements.map((a) => (
               <div key={a.id} className="goal-block">
@@ -143,13 +143,17 @@ export default function ReviewViewPage() {
                   <span style={{ fontWeight: 600 }}>{a.projectName || 'Untitled project'}
                     {a.clientName && <span className="muted"> · {a.clientName}</span>}</span>
                   <span className="pill-row">
-                    {a.managerRating != null && <span className="badge pro">Mgr rating {a.managerRating}/10</span>}
+                    <span className={`badge ${a.manager1Rating != null ? 'pro' : 'Draft'}`}>Mgr 1: {a.manager1Rating != null ? `${a.manager1Rating}/10` : '—'}</span>
+                    <span className={`badge ${a.manager2Rating != null ? 'pro' : 'Draft'}`}>Mgr 2: {a.manager2Rating != null ? `${a.manager2Rating}/10` : '—'}</span>
                     {a.companyTraitName && <span className="badge trait">{a.companyTraitName}</span>}
                   </span>
                 </div>
                 {a.workDescription && <div className="kv"><span className="k">Work</span><span>{a.workDescription}</span></div>}
               </div>
             ))
+          )}
+          {myAssignment?.reviewerType === 'Manager' && review.status !== 'Draft' && review.achievements.length > 0 && (
+            <AchievementRatingForm review={review} onDone={reload} />
           )}
         </div>
       )}
@@ -202,6 +206,7 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 function GoalView({ g }: { g: Goal }) {
+  const isPersonal = g.goalType === 'Personal'
   return (
     <div className="goal-block">
       <div className="goal-top">
@@ -211,15 +216,61 @@ function GoalView({ g }: { g: Goal }) {
           {g.companyTraitName && <span className="badge trait">{g.companyTraitName}</span>}
         </span>
       </div>
-      <div className="kv"><span className="k">Specific</span><span>{g.specific}</span></div>
-      <div className="kv"><span className="k">Measurable</span><span>{g.measurable}</span></div>
-      <div className="kv"><span className="k">Achievable</span><span>{g.achievable}</span></div>
-      <div className="kv"><span className="k">Relevant</span><span>{g.relevant}</span></div>
-      <div className="kv"><span className="k">Time-bound</span><span>{g.timeBound}</span></div>
+      {isPersonal ? (
+        <div className="kv"><span className="k">Target</span><span>{g.target || '—'}</span></div>
+      ) : (
+        <>
+          <div className="kv"><span className="k">Specific</span><span>{g.specific}</span></div>
+          <div className="kv"><span className="k">Measurable</span><span>{g.measurable}</span></div>
+          <div className="kv"><span className="k">Achievable</span><span>{g.achievable}</span></div>
+          <div className="kv"><span className="k">Relevant</span><span>{g.relevant}</span></div>
+          <div className="kv"><span className="k">Time-bound</span><span>{g.timeBound}</span></div>
+        </>
+      )}
       {(g.statusComment || g.statusDate) && (
         <div className="kv"><span className="k">Progress</span>
           <span>{g.statusComment || '—'}{g.statusDate ? ` (as of ${new Date(g.statusDate).toLocaleDateString()})` : ''}</span></div>
       )}
+    </div>
+  )
+}
+
+function AchievementRatingForm({ review, onDone }: { review: ReviewDetail; onDone: () => Promise<any> }) {
+  const [ratings, setRatings] = useState<Record<number, number>>({})
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [err, setErr] = useState('')
+
+  const submit = async () => {
+    setErr(''); setMsg('')
+    const payload = Object.entries(ratings).filter(([, v]) => v > 0)
+      .map(([k, v]) => ({ achievementId: Number(k), rating: v }))
+    if (payload.length === 0) { setErr('Rate at least one achievement.'); return }
+    setBusy(true)
+    try {
+      await put(`/api/reviews/${review.id}/achievement-ratings`, { ratings: payload })
+      setMsg('Your achievement ratings were saved.')
+      await onDone()
+    } catch (e: any) {
+      setErr(e.message || 'Failed to save ratings')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 16 }}>
+      <h3 style={{ marginBottom: 6 }}>Rate these achievements (as a manager)</h3>
+      <p className="section-hint">Your rating lands in your manager slot. Rate each project 1–10.</p>
+      {msg && <div className="success">{msg}</div>}
+      {err && <div className="error">{err}</div>}
+      {review.achievements.map((a) => (
+        <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
+          <span>{a.projectName || 'Untitled project'}{a.clientName ? ` · ${a.clientName}` : ''}</span>
+          <StarRating value={ratings[a.id] ?? 0} onChange={(v) => setRatings((m) => ({ ...m, [a.id]: v }))} />
+        </div>
+      ))}
+      <button disabled={busy} onClick={submit} style={{ marginTop: 10 }}>Save achievement ratings</button>
     </div>
   )
 }

@@ -142,10 +142,12 @@ public class ReviewsController : ControllerBase
                 Status = g.Status ?? GoalStatus.NotStarted,
                 CompletionPercentage = Math.Clamp(g.CompletionPercentage ?? 0, 0, 100),
                 StatusComment = g.StatusComment,
-                StatusDate = g.StatusDate
+                StatusDate = g.StatusDate,
+                Target = g.Target
             });
         }
         // Only persist achievements that have a project name or a description.
+        // Manager ratings are NOT set here — only the assigned managers can rate.
         foreach (var a in (req.Achievements ?? new())
                      .Where(a => !string.IsNullOrWhiteSpace(a.ProjectName) || !string.IsNullOrWhiteSpace(a.WorkDescription)))
         {
@@ -154,7 +156,6 @@ public class ReviewsController : ControllerBase
                 ProjectName = (a.ProjectName ?? "").Trim(),
                 ClientName = (a.ClientName ?? "").Trim(),
                 WorkDescription = (a.WorkDescription ?? "").Trim(),
-                ManagerRating = a.ManagerRating,
                 CompanyTraitId = a.CompanyTraitId
             });
         }
@@ -357,6 +358,37 @@ public class ReviewsController : ControllerBase
         return await BuildDetail((await LoadFull(id))!);
     }
 
+    // ---------------- Manager: rate previous-year achievements ----------------
+
+    /// <summary>
+    /// An assigned manager rates the developer's previous-year achievements. The rating lands in
+    /// the Manager-1 or Manager-2 slot based on which manager the caller is (requirements 1 &amp; 2).
+    /// </summary>
+    [HttpPut("{id:int}/achievement-ratings")]
+    public async Task<ActionResult<ReviewDetailDto>> RateAchievements(int id, SaveAchievementRatingsRequest req)
+    {
+        var review = await LoadFull(id);
+        if (review is null) return NotFound();
+
+        var me = User.GetUserId();
+        var assignment = review.Reviewers.FirstOrDefault(r => r.ReviewerId == me);
+        if (assignment is null || assignment.ReviewerType != ReviewerType.Manager)
+            return Forbid();
+
+        var isManager2 = assignment.Weight >= (ReviewRules.Manager1Weight + ReviewRules.Manager2Weight) / 2;
+
+        foreach (var r in req.Ratings)
+        {
+            var ach = review.Achievements.FirstOrDefault(a => a.Id == r.AchievementId);
+            if (ach is null) continue;
+            if (isManager2) ach.Manager2Rating = r.Rating;
+            else ach.Manager1Rating = r.Rating;
+        }
+
+        await _db.SaveChangesAsync();
+        return await BuildDetail((await LoadFull(id))!);
+    }
+
     // ================= helpers =================
 
     private async Task<List<string>> ValidateForSubmit(Review review)
@@ -374,15 +406,31 @@ public class ReviewsController : ControllerBase
         if (review.SelectedPeerId is null)
             errors.Add("You must select a peer for the review.");
 
+        // Previous-year achievements (requirement 6).
+        var achievements = review.Achievements.Count(a =>
+            !string.IsNullOrWhiteSpace(a.ProjectName) || !string.IsNullOrWhiteSpace(a.WorkDescription));
+        if (achievements < ReviewRules.MinAchievements)
+            errors.Add($"At least {ReviewRules.MinAchievements} previous-year achievements are required (you have {achievements}).");
+
         foreach (var g in review.Goals)
         {
             var label = string.IsNullOrWhiteSpace(g.Title) ? "(untitled)" : g.Title;
-            if (string.IsNullOrWhiteSpace(g.Title) || string.IsNullOrWhiteSpace(g.Specific) ||
-                string.IsNullOrWhiteSpace(g.Measurable) || string.IsNullOrWhiteSpace(g.Achievable) ||
-                string.IsNullOrWhiteSpace(g.Relevant) || string.IsNullOrWhiteSpace(g.TimeBound))
-                errors.Add($"Goal \"{label}\" is missing one or more SMART fields.");
-            if (g.CompanyTraitId is null)
-                errors.Add($"Goal \"{label}\" must be tagged against a company trait.");
+            if (g.GoalType == GoalType.Professional)
+            {
+                // Professional goals: full SMART template + company trait.
+                if (string.IsNullOrWhiteSpace(g.Title) || string.IsNullOrWhiteSpace(g.Specific) ||
+                    string.IsNullOrWhiteSpace(g.Measurable) || string.IsNullOrWhiteSpace(g.Achievable) ||
+                    string.IsNullOrWhiteSpace(g.Relevant) || string.IsNullOrWhiteSpace(g.TimeBound))
+                    errors.Add($"Professional goal \"{label}\" is missing one or more SMART fields.");
+                if (g.CompanyTraitId is null)
+                    errors.Add($"Professional goal \"{label}\" must be tagged against a company trait.");
+            }
+            else
+            {
+                // Personal goals: simple — a title and a target (requirement 3).
+                if (string.IsNullOrWhiteSpace(g.Title) || string.IsNullOrWhiteSpace(g.Target))
+                    errors.Add($"Personal goal \"{label}\" needs a title and a target.");
+            }
         }
 
         // Every skill identified for the role must be rated.
@@ -436,6 +484,20 @@ public class ReviewsController : ControllerBase
                 .Select(rs => new SkillDto(rs.Skill!.Id, rs.Skill.Name, rs.Skill.Category))
                 .ToListAsync();
 
+        // Requirement 4: mask reviewer identities from the developer (the review owner).
+        var me = User.GetUserId();
+        var anon = r.DeveloperId == me;
+        var labelById = new Dictionary<int, string>();
+        if (anon)
+        {
+            var mgrs = r.Reviewers.Where(x => x.ReviewerType == ReviewerType.Manager).OrderBy(x => x.Weight).ToList();
+            for (var i = 0; i < mgrs.Count; i++) labelById[mgrs[i].ReviewerId] = $"Manager {i + 1}";
+            foreach (var p in r.Reviewers.Where(x => x.ReviewerType == ReviewerType.Peer))
+                labelById[p.ReviewerId] = "Peer";
+        }
+        string RevName(int reviewerId, string actual) =>
+            anon ? (labelById.TryGetValue(reviewerId, out var l) ? l : "Reviewer") : actual;
+
         return new ReviewDetailDto(
             r.Id,
             r.ReviewCycleId,
@@ -457,16 +519,16 @@ public class ReviewsController : ControllerBase
             r.ReviewCycle?.DueDate,
             r.Goals.Select(g => new GoalDto(g.Id, g.GoalType, g.Title, g.Specific, g.Measurable,
                 g.Achievable, g.Relevant, g.TimeBound, g.CompanyTraitId, g.CompanyTrait?.Name,
-                g.Status, g.CompletionPercentage, g.StatusComment, g.StatusDate)).ToList(),
+                g.Status, g.CompletionPercentage, g.StatusComment, g.StatusDate, g.Target)).ToList(),
             r.Achievements.Select(a => new AchievementDto(a.Id, a.ProjectName, a.ClientName, a.WorkDescription,
-                a.ManagerRating, a.CompanyTraitId, a.CompanyTrait?.Name)).ToList(),
+                a.Manager1Rating, a.Manager2Rating, a.CompanyTraitId, a.CompanyTrait?.Name)).ToList(),
             r.RndImprovements.Select(x => new RndImprovementDto(x.Id, x.Description)).ToList(),
             r.FutureSkills.Select(x => new FutureSkillDto(x.Id, x.Name)).ToList(),
             r.SkillRatings.Select(sr => new SkillRatingDto(sr.SkillId, sr.Skill?.Name ?? "", sr.SelfRating, sr.Comments)).ToList(),
             roleSkills,
-            r.Reviewers.Select(rr => new ReviewerDto(rr.ReviewerId, rr.Reviewer?.FullName ?? "", rr.ReviewerType,
+            r.Reviewers.Select(rr => new ReviewerDto(rr.ReviewerId, RevName(rr.ReviewerId, rr.Reviewer?.FullName ?? ""), rr.ReviewerType,
                 r.Assessments.Any(a => a.ReviewerId == rr.ReviewerId && a.SubmittedAt != null))).ToList(),
-            r.Assessments.Select(a => new AssessmentDto(a.Id, a.ReviewerId, a.Reviewer?.FullName ?? "", a.ReviewerType,
+            r.Assessments.Select(a => new AssessmentDto(a.Id, a.ReviewerId, RevName(a.ReviewerId, a.Reviewer?.FullName ?? ""), a.ReviewerType,
                 a.OverallRating, a.Strengths, a.Improvements, a.SubmittedAt,
                 a.SkillRatings.Select(sr => new ReviewerSkillRatingDto(sr.SkillId, sr.Skill?.Name ?? "", sr.Rating)).ToList())).ToList());
     }

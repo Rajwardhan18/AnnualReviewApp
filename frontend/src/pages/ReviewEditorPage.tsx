@@ -14,18 +14,23 @@ const STATUS_LABEL: Record<GoalStatus, string> = {
   NotStarted: 'Not Started', InProgress: 'In Progress', Completed: 'Completed', Dropped: 'Dropped',
 }
 
+const MIN_ACHIEVEMENTS = 5
+
 function emptyGoal(goalType: GoalType): EditGoal {
   return {
     goalType, title: '', specific: '', measurable: '', achievable: '', relevant: '', timeBound: '',
-    companyTraitId: null, status: 'NotStarted', completionPercentage: 0, statusComment: '', statusDate: null,
+    companyTraitId: null, status: 'NotStarted', completionPercentage: 0, statusComment: '', statusDate: null, target: '',
   }
 }
 function emptyAchievement(): AchievementInput {
-  return { projectName: '', clientName: '', workDescription: '', managerRating: null, companyTraitId: null }
+  return { projectName: '', clientName: '', workDescription: '', companyTraitId: null }
 }
+// Professional goals use SMART + trait; Personal goals just need a title and a target.
 const isGoalComplete = (g: EditGoal) =>
-  !!g.title.trim() && !!g.specific.trim() && !!g.measurable.trim() &&
-  !!g.achievable.trim() && !!g.relevant.trim() && !!g.timeBound.trim() && g.companyTraitId != null
+  g.goalType === 'Personal'
+    ? !!g.title.trim() && !!(g.target ?? '').trim()
+    : !!g.title.trim() && !!g.specific.trim() && !!g.measurable.trim() &&
+      !!g.achievable.trim() && !!g.relevant.trim() && !!g.timeBound.trim() && g.companyTraitId != null
 
 export default function ReviewEditorPage() {
   const { id } = useParams()
@@ -71,7 +76,7 @@ export default function ReviewEditorPage() {
       }
       setAchievements(r.achievements.map((a) => ({
         projectName: a.projectName, clientName: a.clientName, workDescription: a.workDescription,
-        managerRating: a.managerRating ?? null, companyTraitId: a.companyTraitId ?? null,
+        companyTraitId: a.companyTraitId ?? null,
       })))
       setRnd(r.rndImprovements.map((x) => x.description))
       setFuture(r.futureSkills.map((x) => x.name))
@@ -107,7 +112,7 @@ export default function ReviewEditorPage() {
       goals: goals.map((g) => ({
         goalType: g.goalType, title: g.title, specific: g.specific, measurable: g.measurable,
         achievable: g.achievable, relevant: g.relevant, timeBound: g.timeBound,
-        companyTraitId: g.companyTraitId ?? null,
+        companyTraitId: g.companyTraitId ?? null, target: g.target ?? null,
         status: g.status, completionPercentage: g.completionPercentage,
         statusComment: g.statusComment ?? null, statusDate: g.statusDate || null,
       })),
@@ -169,11 +174,13 @@ export default function ReviewEditorPage() {
   const perComplete = personal.filter(isGoalComplete).length
   const skillsRated = Object.values(ratings).filter((r) => r.selfRating > 0).length
   const skillsTotal = review.roleSkills.length
+  const achCount = achievements.filter((a) => a.projectName.trim() || a.workDescription.trim()).length
 
   const criteria = [
     { label: 'A peer is selected for the review', met: peerId !== '' },
     { label: `At least ${MIN_PROFESSIONAL} professional goals fully filled (SMART + trait)`, met: proComplete >= MIN_PROFESSIONAL },
-    { label: `At least ${MIN_PERSONAL} personal goals fully filled (SMART + trait)`, met: perComplete >= MIN_PERSONAL },
+    { label: `At least ${MIN_PERSONAL} personal goals filled (title + target)`, met: perComplete >= MIN_PERSONAL },
+    { label: `At least ${MIN_ACHIEVEMENTS} previous-year achievements added`, met: achCount >= MIN_ACHIEVEMENTS },
     { label: `All ${skillsTotal} role skills rated`, met: skillsTotal === 0 || skillsRated >= skillsTotal },
   ]
   const allMet = criteria.every((c) => c.met)
@@ -270,7 +277,7 @@ export default function ReviewEditorPage() {
           Personal Goals <span className={`count-hint ${perComplete >= MIN_PERSONAL ? 'ok' : 'bad'}`}>{perComplete}/{MIN_PERSONAL}</span>
         </button>
         <button className={tab === 'achievements' ? 'active' : ''} onClick={() => setTab('achievements')}>
-          Key Achievements <span className="muted">({achievements.length})</span>
+          Previous Year Achievements <span className={`count-hint ${achCount >= MIN_ACHIEVEMENTS ? 'ok' : 'bad'}`}>{achCount}/{MIN_ACHIEVEMENTS}</span>
         </button>
       </div>
 
@@ -339,36 +346,44 @@ export default function ReviewEditorPage() {
 
       {tab === 'achievements' && (
         <div className="card">
-          <h3>Last Year — Key Achievements</h3>
-          <p className="section-hint">Projects you delivered last year: project, client, work done, and the rating your manager gave.</p>
+          <h3>Previous Year Achievements</h3>
+          <p className="section-hint">Projects you delivered last year: project, client and work done ({MIN_ACHIEVEMENTS} required). Your managers rate each of these — the ratings appear here once they review.</p>
           {achievements.length === 0 && <div className="muted" style={{ marginBottom: 12 }}>No achievements added yet.</div>}
-          {achievements.map((a, i) => (
-            <div key={i} className="goal-block">
-              <div className="goal-top">
-                <span className="badge trait">Achievement #{i + 1}</span>
-                {!readOnly && <button className="danger small" onClick={() => removeAch(i)}>Remove</button>}
+          {achievements.map((a, i) => {
+            const rated = review.achievements[i]
+            return (
+              <div key={i} className="goal-block">
+                <div className="goal-top">
+                  <span className="badge trait">Achievement #{i + 1}</span>
+                  {!readOnly && <button className="danger small" onClick={() => removeAch(i)}>Remove</button>}
+                </div>
+                <div className="grid-2">
+                  <div className="field"><label>Project name</label>
+                    <input disabled={readOnly} value={a.projectName} onChange={(e) => updateAch(i, { projectName: e.target.value })} placeholder="e.g. Checkout revamp" /></div>
+                  <div className="field"><label>Client name</label>
+                    <input disabled={readOnly} value={a.clientName} onChange={(e) => updateAch(i, { clientName: e.target.value })} placeholder="e.g. Acme Corp" /></div>
+                </div>
+                <div className="field"><label>Work description</label>
+                  <textarea rows={2} disabled={readOnly} value={a.workDescription} onChange={(e) => updateAch(i, { workDescription: e.target.value })}
+                    placeholder="What you delivered and its impact" /></div>
+                <div className="grid-2">
+                  <div className="field"><label>Company trait (optional)</label>
+                    <select disabled={readOnly} value={a.companyTraitId ?? ''}
+                      onChange={(e) => updateAch(i, { companyTraitId: e.target.value === '' ? null : Number(e.target.value) })}>
+                      <option value="">Select trait…</option>
+                      {traits.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select></div>
+                  <div className="field">
+                    <label>Manager ratings</label>
+                    <div className="pill-row" style={{ paddingTop: 4 }}>
+                      <span className={`badge ${rated?.manager1Rating != null ? 'pro' : 'Draft'}`}>Manager 1: {rated?.manager1Rating != null ? `${rated.manager1Rating}/10` : 'pending'}</span>
+                      <span className={`badge ${rated?.manager2Rating != null ? 'pro' : 'Draft'}`}>Manager 2: {rated?.manager2Rating != null ? `${rated.manager2Rating}/10` : 'pending'}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="grid-2">
-                <div className="field"><label>Project name</label>
-                  <input disabled={readOnly} value={a.projectName} onChange={(e) => updateAch(i, { projectName: e.target.value })} placeholder="e.g. Checkout revamp" /></div>
-                <div className="field"><label>Client name</label>
-                  <input disabled={readOnly} value={a.clientName} onChange={(e) => updateAch(i, { clientName: e.target.value })} placeholder="e.g. Acme Corp" /></div>
-              </div>
-              <div className="field"><label>Work description</label>
-                <textarea rows={2} disabled={readOnly} value={a.workDescription} onChange={(e) => updateAch(i, { workDescription: e.target.value })}
-                  placeholder="What you delivered and its impact" /></div>
-              <div className="grid-2">
-                <div className="field"><label>Manager rating (last year)</label>
-                  <StarRating value={a.managerRating ?? 0} readonly={readOnly} onChange={(v) => updateAch(i, { managerRating: v })} /></div>
-                <div className="field"><label>Company trait (optional)</label>
-                  <select disabled={readOnly} value={a.companyTraitId ?? ''}
-                    onChange={(e) => updateAch(i, { companyTraitId: e.target.value === '' ? null : Number(e.target.value) })}>
-                    <option value="">Select trait…</option>
-                    {traits.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select></div>
-              </div>
-            </div>
-          ))}
+            )
+          })}
           {!readOnly && <button className="secondary" onClick={addAch}>+ Add achievement</button>}
         </div>
       )}
@@ -444,24 +459,34 @@ function GoalAccordion({ goal, index, traits, planReadOnly, onChange, onRemove }
       {open && (
         <div className="acc-body">
           <div className="field">
-            <label>Title</label>
-            <input value={goal.title} disabled={planReadOnly} onChange={s('title')} placeholder="e.g. Lead the checkout redesign" />
+            <label>{goal.goalType === 'Personal' ? 'Goal' : 'Title'}</label>
+            <input value={goal.title} disabled={planReadOnly} onChange={s('title')}
+              placeholder={goal.goalType === 'Personal' ? 'e.g. Improve public speaking' : 'e.g. Lead the checkout redesign'} />
           </div>
-          <div className="smart-grid">
-            <div className="field"><label>S — Specific</label><textarea rows={2} value={goal.specific} disabled={planReadOnly} onChange={s('specific')} /></div>
-            <div className="field"><label>M — Measurable</label><textarea rows={2} value={goal.measurable} disabled={planReadOnly} onChange={s('measurable')} /></div>
-            <div className="field"><label>A — Achievable / Actionable</label><textarea rows={2} value={goal.achievable} disabled={planReadOnly} onChange={s('achievable')} /></div>
-            <div className="field"><label>R — Relevant</label><textarea rows={2} value={goal.relevant} disabled={planReadOnly} onChange={s('relevant')} /></div>
-            <div className="field"><label>T — Time-bound (target date)</label><input type="date" value={goal.timeBound} disabled={planReadOnly} onChange={s('timeBound')} /></div>
+          {goal.goalType === 'Personal' ? (
             <div className="field">
-              <label>Company trait</label>
-              <select value={goal.companyTraitId ?? ''} disabled={planReadOnly}
-                onChange={(e) => onChange({ companyTraitId: e.target.value === '' ? null : Number(e.target.value) })}>
-                <option value="">Select trait…</option>
-                {traits.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+              <label>Target</label>
+              <textarea rows={2} value={goal.target ?? ''} disabled={planReadOnly}
+                onChange={(e) => onChange({ target: e.target.value })}
+                placeholder="What does success look like? e.g. Present at 2 team demos by Q4" />
             </div>
-          </div>
+          ) : (
+            <div className="smart-grid">
+              <div className="field"><label>S — Specific</label><textarea rows={2} value={goal.specific} disabled={planReadOnly} onChange={s('specific')} /></div>
+              <div className="field"><label>M — Measurable</label><textarea rows={2} value={goal.measurable} disabled={planReadOnly} onChange={s('measurable')} /></div>
+              <div className="field"><label>A — Achievable / Actionable</label><textarea rows={2} value={goal.achievable} disabled={planReadOnly} onChange={s('achievable')} /></div>
+              <div className="field"><label>R — Relevant</label><textarea rows={2} value={goal.relevant} disabled={planReadOnly} onChange={s('relevant')} /></div>
+              <div className="field"><label>T — Time-bound (target date)</label><input type="date" value={goal.timeBound} disabled={planReadOnly} onChange={s('timeBound')} /></div>
+              <div className="field">
+                <label>Company trait</label>
+                <select value={goal.companyTraitId ?? ''} disabled={planReadOnly}
+                  onChange={(e) => onChange({ companyTraitId: e.target.value === '' ? null : Number(e.target.value) })}>
+                  <option value="">Select trait…</option>
+                  {traits.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
 
           {/* Requirement 6: progress tracking — editable even after submission */}
           <div style={{ borderTop: '1px dashed var(--line)', marginTop: 12, paddingTop: 12 }}>

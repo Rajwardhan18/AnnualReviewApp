@@ -5,6 +5,7 @@ public static class ReviewRules
 {
     public const int MinProfessionalGoals = 5;
     public const int MinPersonalGoals = 2;
+    public const int MinAchievements = 5;
     public const int RequiredManagers = 2;
     public const int RequiredPeers = 1;
 

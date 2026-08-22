@@ -35,6 +35,10 @@ public class Goal
     [MaxLength(1000)]
     public string TimeBound { get; set; } = string.Empty;
 
+    /// <summary>Simple target for Personal goals (which do not use the SMART template).</summary>
+    [MaxLength(1000)]
+    public string? Target { get; set; }
+
     // Requirement 8: each goal tagged against a company trait (required on submit).
     public int? CompanyTraitId { get; set; }
     public CompanyTrait? CompanyTrait { get; set; }

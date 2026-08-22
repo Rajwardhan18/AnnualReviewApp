@@ -59,6 +59,7 @@ export interface Goal {
   completionPercentage: number
   statusComment?: string | null
   statusDate?: string | null
+  target?: string | null
 }
 
 export interface GoalInput {
@@ -74,6 +75,7 @@ export interface GoalInput {
   completionPercentage: number
   statusComment?: string | null
   statusDate?: string | null
+  target?: string | null
 }
 
 export interface GoalProgressInput {
@@ -89,7 +91,8 @@ export interface Achievement {
   projectName: string
   clientName: string
   workDescription: string
-  managerRating?: number | null
+  manager1Rating?: number | null
+  manager2Rating?: number | null
   companyTraitId?: number | null
   companyTraitName?: string | null
 }
@@ -98,7 +101,6 @@ export interface AchievementInput {
   projectName: string
   clientName: string
   workDescription: string
-  managerRating?: number | null
   companyTraitId?: number | null
 }
 

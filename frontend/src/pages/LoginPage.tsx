@@ -6,8 +6,8 @@ import AuthHero from '../components/AuthHero'
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('admin@company.com')
-  const [password, setPassword] = useState('Admin@123')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -31,8 +31,8 @@ export default function LoginPage() {
         <AuthHero />
 
         <div className="auth-form">
-          <h1 className="auth-title" style={{ textAlign: 'center' }}>Welcome to ARISe</h1>
-          <p className="muted" style={{ marginTop: 0, textAlign: 'center' }}>To Infinity and Beyond</p>
+          <h1 className="auth-title">Welcome to ARISe</h1>
+          <p className="muted" style={{ marginTop: 4 }}>To Infinity and Beyond</p>
           {error && <div className="error">{error}</div>}
           <form onSubmit={submit}>
             <div className="field">
@@ -49,9 +49,6 @@ export default function LoginPage() {
           </form>
           <p className="muted" style={{ marginTop: 16 }}>
             New here? <Link to="/register">Create an account</Link>
-          </p>
-          <p className="muted" style={{ fontSize: 12 }}>
-            Seeded admin: <code>admin@company.com</code> / <code>Admin@123</code>
           </p>
         </div>
       </div>

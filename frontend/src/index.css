@@ -134,6 +134,7 @@ a:hover { text-decoration: underline; }
 
 /* ---- Forms ---- */
 label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px; }
+.field-help { display: block; font-weight: 400; color: var(--muted); font-size: 12px; line-height: 1.45; margin: -1px 0 6px; }
 input, select, textarea {
   width: 100%;
   padding: 9px 11px;

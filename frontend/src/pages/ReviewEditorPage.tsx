@@ -494,8 +494,9 @@ function GoalAccordion({ goal, index, traits, planReadOnly, progressLocked, onCh
         <div className="acc-body">
           <div className="field">
             <label>{goal.goalType === 'Personal' ? 'Goal' : 'Title'}</label>
+            <span className="field-help">A short name for the goal you'll recognise at a glance.</span>
             <input value={goal.title} disabled={planReadOnly} onChange={s('title')}
-              placeholder={goal.goalType === 'Personal' ? 'e.g. Improve public speaking' : 'e.g. Lead the checkout redesign'} />
+              placeholder={goal.goalType === 'Personal' ? 'e.g. Improve public speaking' : 'Run a half marathon'} />
           </div>
           {goal.goalType === 'Personal' ? (
             <div className="field">
@@ -506,11 +507,31 @@ function GoalAccordion({ goal, index, traits, planReadOnly, progressLocked, onCh
             </div>
           ) : (
             <div className="smart-grid">
-              <div className="field"><label>S — Specific</label><textarea rows={2} value={goal.specific} disabled={planReadOnly} onChange={s('specific')} /></div>
-              <div className="field"><label>M — Measurable</label><textarea rows={2} value={goal.measurable} disabled={planReadOnly} onChange={s('measurable')} /></div>
-              <div className="field"><label>A — Achievable / Actionable</label><textarea rows={2} value={goal.achievable} disabled={planReadOnly} onChange={s('achievable')} /></div>
-              <div className="field"><label>R — Relevant</label><textarea rows={2} value={goal.relevant} disabled={planReadOnly} onChange={s('relevant')} /></div>
-              <div className="field"><label>T — Time-bound (target date)</label><input type="date" value={goal.timeBound} disabled={planReadOnly} onChange={s('timeBound')} /></div>
+              <div className="field">
+                <label>S — Specific</label>
+                <span className="field-help">State exactly what you'll accomplish, who's involved, and where. Avoid vague words like "improve" or "more".</span>
+                <textarea rows={2} value={goal.specific} disabled={planReadOnly} onChange={s('specific')} placeholder="What exactly will be achieved, and by whom?" />
+              </div>
+              <div className="field">
+                <label>M — Measurable</label>
+                <span className="field-help">Define the number, metric, or evidence that proves the goal is met — so you can answer "how much" and "how will I know I'm done?"</span>
+                <textarea rows={2} value={goal.measurable} disabled={planReadOnly} onChange={s('measurable')} placeholder="e.g. 21 km in under 2 hours, tracked weekly" />
+              </div>
+              <div className="field">
+                <label>A — Achievable / Actionable</label>
+                <span className="field-help">Confirm it's realistic with the time, skills, and resources you actually have — and name the first concrete action.</span>
+                <textarea rows={2} value={goal.achievable} disabled={planReadOnly} onChange={s('achievable')} placeholder="What makes this doable, and what's step one?" />
+              </div>
+              <div className="field">
+                <label>R — Relevant</label>
+                <span className="field-help">Explain why this matters now and how it connects to your bigger priorities.</span>
+                <textarea rows={2} value={goal.relevant} disabled={planReadOnly} onChange={s('relevant')} placeholder="Why is this worth doing right now?" />
+              </div>
+              <div className="field">
+                <label>T — Time-bound (target date)</label>
+                <span className="field-help">Set a firm deadline that creates urgency and gives you a point to review progress against.</span>
+                <input type="date" value={goal.timeBound} disabled={planReadOnly} onChange={s('timeBound')} />
+              </div>
               <div className="field">
                 <label>Company trait</label>
                 <select value={goal.companyTraitId ?? ''} disabled={planReadOnly}

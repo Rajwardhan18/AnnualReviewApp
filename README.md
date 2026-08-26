@@ -237,3 +237,5 @@ Explore everything interactively at **http://localhost:5099/swagger**.
 - SQLite is used for zero-setup local runs. To switch to SQL Server, change the
   `UseSqlite(...)` call in `Program.cs` and the connection string; the EF model is unchanged.
 - Passwords are hashed with BCrypt. Enums are serialized as strings across the API.
+- To host this on a VM, see **[DEPLOY.md](DEPLOY.md)** — systemd unit, nginx site, env
+  file and the release/rollback steps, following the Sparrow web-server conventions.

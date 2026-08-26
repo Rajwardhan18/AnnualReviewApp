@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { get, post, put, ApiError } from '../api/client'
 import type { AchievementInput, CompanyTrait, GoalInput, GoalStatus, GoalType, ReviewDetail, SkillRatingInput, User } from '../types'
@@ -54,6 +54,13 @@ export default function ReviewEditorPage() {
   const [errors, setErrors] = useState<string[]>([])
   const [message, setMessage] = useState('')
   const [tab, setTab] = useState<Tab>('professional')
+  const [saveState, setSaveState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
+
+  // Auto-save plumbing. `hydrated` skips the first change (the initial data load);
+  // `inFlight` serializes so an auto-save never overlaps a manual save/submit.
+  const hydrated = useRef(false)
+  const inFlight = useRef(false)
+  const autoSaveTimer = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     Promise.all([
@@ -125,7 +132,46 @@ export default function ReviewEditorPage() {
     }
   }
 
+  // Silently persist whatever is currently editable: the draft plan while the
+  // review is a Draft, or goal progress + mid-year reflection once submitted.
+  // Does not touch local state so it never clobbers what the user is typing.
+  async function autoSave() {
+    if (inFlight.current || busy || !review || midYearSubmitted) return
+    inFlight.current = true
+    setSaveState('saving')
+    try {
+      if (!readOnly) {
+        await put<ReviewDetail>(`/api/reviews/${reviewId}/plan`, buildPayload())
+      } else {
+        await put<ReviewDetail>(`/api/reviews/${reviewId}/progress`, {
+          goals: goals.filter((g) => g.id).map((g) => ({
+            goalId: g.id, status: g.status, completionPercentage: g.completionPercentage,
+            statusComment: g.statusComment ?? null, statusDate: g.statusDate || null,
+          })),
+          midYearReflection: review.halfYearlyReleased ? midYear : null,
+        })
+      }
+      setSaveState('saved')
+    } catch {
+      setSaveState('error')
+    } finally {
+      inFlight.current = false
+    }
+  }
+
+  // Debounce: schedule an auto-save ~1.2s after the last edit to any field.
+  useEffect(() => {
+    if (!review || midYearSubmitted) return
+    if (!hydrated.current) { hydrated.current = true; return } // ignore the load-time hydration
+    setSaveState('pending')
+    window.clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = window.setTimeout(() => { void autoSave() }, 1200)
+    return () => window.clearTimeout(autoSaveTimer.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goals, achievements, rnd, future, ratings, peerId, summary, midYear])
+
   async function save(thenSubmit: boolean) {
+    window.clearTimeout(autoSaveTimer.current)
     setErrors([]); setMessage(''); setBusy(true)
     try {
       await put<ReviewDetail>(`/api/reviews/${reviewId}/plan`, buildPayload())
@@ -137,8 +183,10 @@ export default function ReviewEditorPage() {
       } else {
         setMessage('Draft saved.')
       }
+      setSaveState('saved')
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (e: any) {
+      setSaveState('error')
       if (e instanceof ApiError && e.body?.errors) setErrors(e.body.errors)
       else setErrors([e.message || 'Save failed'])
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -148,6 +196,7 @@ export default function ReviewEditorPage() {
   }
 
   async function saveProgress() {
+    window.clearTimeout(autoSaveTimer.current)
     setErrors([]); setMessage(''); setBusy(true)
     try {
       const payload = {
@@ -159,9 +208,11 @@ export default function ReviewEditorPage() {
       }
       const updated = await put<ReviewDetail>(`/api/reviews/${reviewId}/progress`, payload)
       setReview(updated)
+      setSaveState('saved')
       setMessage('Goal progress saved.')
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (e: any) {
+      setSaveState('error')
       setErrors([e.message || 'Save failed'])
     } finally {
       setBusy(false)
@@ -169,6 +220,7 @@ export default function ReviewEditorPage() {
   }
 
   async function submitMidYear() {
+    window.clearTimeout(autoSaveTimer.current)
     setErrors([]); setMessage(''); setBusy(true)
     try {
       const payload = {
@@ -207,6 +259,14 @@ export default function ReviewEditorPage() {
   ]
   const allMet = criteria.every((c) => c.met)
 
+  const autoSaveBadge = midYearSubmitted ? null : (
+    saveState === 'saving' ? <span className="autosave saving"><span className="dot" />Saving…</span>
+    : saveState === 'pending' ? <span className="autosave pending"><span className="dot" />Unsaved changes…</span>
+    : saveState === 'saved' ? <span className="autosave saved">✓ All changes saved</span>
+    : saveState === 'error' ? <span className="autosave err">Auto-save failed — use the button</span>
+    : null
+  )
+
   return (
     <>
       <div className="page-head">
@@ -241,7 +301,8 @@ export default function ReviewEditorPage() {
             <button className="secondary" disabled={busy} onClick={() => save(false)}>Save draft</button>
             <button disabled={busy || !allMet} onClick={() => save(true)}
               title={allMet ? 'Submit your plan' : 'Complete the minimum criteria first'}>Submit plan</button>
-            <span className="muted">Submitting locks the plan (you can still update goal progress).</span>
+            {autoSaveBadge}
+            <span className="muted">Changes save automatically. Submitting locks the plan (you can still update goal progress).</span>
           </div>
         </div>
       ) : (
@@ -272,9 +333,14 @@ export default function ReviewEditorPage() {
                 ? <>
                     <button className="secondary" disabled={busy} onClick={saveProgress}>Save progress</button>
                     <button disabled={busy} onClick={submitMidYear}>Submit mid-year review</button>
-                    <span className="muted">Submitting locks your mid-year review.</span>
+                    {autoSaveBadge}
+                    <span className="muted">Progress saves automatically. Submitting locks your mid-year review.</span>
                   </>
-                : <button disabled={busy} onClick={saveProgress}>Save goal progress</button>}
+                : <>
+                    <button disabled={busy} onClick={saveProgress}>Save goal progress</button>
+                    {autoSaveBadge}
+                    <span className="muted">Progress saves automatically as you type.</span>
+                  </>}
             </div>
           )}
         </div>

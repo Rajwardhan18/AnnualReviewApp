@@ -187,6 +187,17 @@ button.danger { background: #fff; color: var(--red); border-color: #f0c6c6; }
 button.small { padding: 5px 10px; font-size: 12px; }
 .btn-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
+/* ---- Auto-save status ---- */
+.autosave { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+.autosave .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.autosave.pending { color: var(--muted); }
+.autosave.saving { color: var(--primary); }
+.autosave.saving .dot { animation: autosave-pulse 1s ease-in-out infinite; }
+.autosave.saved { color: var(--green, #0e9f6e); }
+.autosave.err { color: #c0392b; }
+@keyframes autosave-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .autosave.saving .dot { animation: none; } }
+
 /* ---- Badges / status ---- */
 .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .badge.Draft { background: #eef1f6; color: #62708a; }

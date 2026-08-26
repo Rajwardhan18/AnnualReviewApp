@@ -1,0 +1,91 @@
+# ARISe backend API.
+#
+# Install to /etc/systemd/system/arise-api.service
+#
+# This follows the hardening, slice and path conventions of the shared
+# backend@.service template in the Sparrow web-server guide, with two
+# deliberate differences (see DEPLOY.md, "Deviations"):
+#
+#   1. No Python venv ExecStartPre — ARISe is a pure .NET app.
+#   2. ARISe stores its data in SQLite, so it needs one writable directory.
+#      The shared template marks the whole app directory read-only, which
+#      would stop the API from creating planreview.db and its -wal/-shm
+#      sidecars. The database therefore lives outside the app directory,
+#      under /var/sparrow/files/arise, and is pointed at from the env file.
+
+[Unit]
+Description=ARISe annual plan & review API
+StartLimitIntervalSec=60
+StartLimitBurst=5
+After=network-online.target remote-fs.target nss-lookup.target
+Wants=network-online.target
+
+[Service]
+
+# Parametric configuration
+WorkingDirectory=/var/www/projects/arise/backend/
+ExecStartPre=+/usr/bin/install -d -m 0750 -o www-data -g www-data /var/sparrow/files/arise
+ExecStart=/opt/dotnet/dotnet /var/www/projects/arise/backend/PlanReview.Api.dll
+EnvironmentFile=-/etc/sparrow/shared/common.env
+EnvironmentFile=/etc/sparrow/sites/arise.env
+SyslogIdentifier=arise-api
+ReadOnlyPaths=/var/www/projects/arise/backend/
+ReadWritePaths=/var/sparrow/files/arise/
+
+# User and group setting
+User=www-data
+Group=www-data
+
+# Restart signals and timeouts
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+KillMode=control-group
+TimeoutStopSec=90
+TimeoutStartSec=30
+
+# Memory control and limits
+MemoryMax=512M
+MemorySwapMax=0
+MemoryAccounting=true
+OOMScoreAdjust=500
+
+# CPU control
+CPUAccounting=true
+Nice=5
+
+# IO control
+IOAccounting=true
+
+# Basic Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+CapabilityBoundingSet=~CAP_SYS_ADMIN CAP_SYS_PTRACE CAP_NET_RAW
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+LockPersonality=true
+RemoveIPC=true
+UMask=0077
+
+# Dotnet shared environment variables
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+# Slice configuration
+Slice=backend.slice
+
+[Install]
+WantedBy=multi-user.target

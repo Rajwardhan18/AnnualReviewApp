@@ -2,7 +2,7 @@
 
 **ARISe** (Achieve · Reflect · Innovate · Strategize — *for excellence*) is a web
 application for running the annual plan-and-review cycle for developers, by **Sparrow**.
-**.NET 9** Web API backend + **React (Vite + TypeScript)** frontend, with **SQLite**
+**.NET 10** Web API backend + **React (Vite + TypeScript)** frontend, with **SQLite**
 storage and **JWT** authentication. The UI uses the ARISe theme — an emerald/gold palette
 with the four pillars as accent colours and a sunrise brand mark.
 
@@ -24,8 +24,9 @@ Then open **http://localhost:5173**. The frontend proxies `/api/*` to the backen
 so no CORS setup is needed in dev. The SQLite database and all master data are
 created and seeded automatically on first run.
 
-> The scripts point at the Homebrew `dotnet@9` SDK and Node automatically.
-> If you run the projects manually, ensure `dotnet` (9.x) and `node` are on your PATH.
+> The backend script locates an installed .NET 10 SDK automatically (official installer,
+> Homebrew, or `~/.dotnet`) and the frontend script picks up Homebrew's Node.
+> If you run the projects manually, ensure `dotnet` (10.x) and `node` are on your PATH.
 
 ### Seeded / demo accounts
 
@@ -49,7 +50,7 @@ account re-seed automatically (developers/reviews do not).
 
 ```
 AnnualReviewApp/
-├─ backend/PlanReview.Api/       # .NET 9 Web API
+├─ backend/PlanReview.Api/       # .NET 10 Web API
 │  ├─ Models/                    # EF Core entities + enums
 │  ├─ Data/                      # DbContext + seeder
 │  ├─ DTOs/                      # request/response contracts

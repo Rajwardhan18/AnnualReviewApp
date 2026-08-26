@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend/PlanReview.Api
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
 
@@ -26,6 +26,9 @@ jobs:
 
       - name: Build
         run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release
 
   frontend:
     name: Frontend (React + Vite)

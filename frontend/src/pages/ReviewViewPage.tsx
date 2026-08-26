@@ -153,7 +153,9 @@ export default function ReviewViewPage() {
             ))
           )}
           {myAssignment?.reviewerType === 'Manager' && review.status !== 'Draft' && review.achievements.length > 0 && (
-            <AchievementRatingForm review={review} onDone={reload} />
+            review.achievementRatingsLocked
+              ? <p className="muted">Your achievement ratings have been submitted and are now locked.</p>
+              : <AchievementRatingForm review={review} onDone={reload} />
           )}
         </div>
       )}

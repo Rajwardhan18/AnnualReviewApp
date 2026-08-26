@@ -172,6 +172,8 @@ export interface ReviewDetail {
   reviewers: Reviewer[]
   assessments: Assessment[]
   myManagerSlot?: number | null
+  /** True once this manager may no longer change their achievement ratings. */
+  achievementRatingsLocked?: boolean
 }
 
 // ---- Ratings dashboard ----

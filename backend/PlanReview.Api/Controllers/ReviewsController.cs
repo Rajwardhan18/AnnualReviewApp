@@ -293,7 +293,12 @@ public class ReviewsController : ControllerBase
         if (managerIds.Count != ReviewRules.RequiredManagers)
             return BadRequest(new { message = $"Exactly {ReviewRules.RequiredManagers} managers must be assigned." });
 
-        var managers = await _db.Users.Where(u => managerIds.Contains(u.Id)).ToListAsync();
+        // The database returns these rows in its own order (by primary key), which is not the
+        // order the admin picked them in. Restore the caller's order — the first manager picked
+        // carries Manager 1's weight and the second carries Manager 2's.
+        var managers = (await _db.Users.Where(u => managerIds.Contains(u.Id)).ToListAsync())
+            .OrderBy(m => managerIds.IndexOf(m.Id))
+            .ToList();
         if (managers.Count != managerIds.Count || managers.Any(m => m.UserType != UserType.Manager))
             return BadRequest(new { message = "All assigned managers must be valid Manager users." });
 
@@ -404,6 +409,11 @@ public class ReviewsController : ControllerBase
         var assignment = review.Reviewers.FirstOrDefault(r => r.ReviewerId == me);
         if (assignment is null || assignment.ReviewerType != ReviewerType.Manager)
             return Forbid();
+
+        // Submit-and-freeze: ratings are final once this manager has submitted their assessment,
+        // and nobody may move them after the developer has been shown their released ratings.
+        if (ReviewRules.AchievementRatingsLocked(review, me))
+            return BadRequest(new { message = "Achievement ratings are locked and can no longer be changed." });
 
         var isManager2 = assignment.Weight >= (ReviewRules.Manager1Weight + ReviewRules.Manager2Weight) / 2;
 
@@ -567,7 +577,8 @@ public class ReviewsController : ControllerBase
             r.Assessments.Select(a => new AssessmentDto(a.Id, a.ReviewerId, RevName(a.ReviewerId, a.Reviewer?.FullName ?? ""), a.ReviewerType,
                 a.OverallRating, a.Strengths, a.Improvements, a.SubmittedAt,
                 a.SkillRatings.Select(sr => new ReviewerSkillRatingDto(sr.SkillId, sr.Skill?.Name ?? "", sr.Rating)).ToList())).ToList(),
-            myManagerSlot);
+            myManagerSlot,
+            myManagerSlot is not null && ReviewRules.AchievementRatingsLocked(r, me));
     }
 
     private static ReviewSummaryDto ToSummary(Review r, bool? myAssessmentSubmitted = null) => new(

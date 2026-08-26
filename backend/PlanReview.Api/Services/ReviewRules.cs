@@ -1,8 +1,21 @@
+using PlanReview.Api.Models;
+
 namespace PlanReview.Api.Services;
 
 /// <summary>Business rules for review submission (requirements 7, 10, 11).</summary>
 public static class ReviewRules
 {
+    /// <summary>
+    /// Whether <paramref name="managerId"/> can still change their achievement ratings.
+    /// They freeze once that manager has submitted their assessment, or once the admin has
+    /// released ratings or ended the cycle — matching the submit-and-freeze rule used by
+    /// the plan, the mid-year checkpoint and the reviewer assessments.
+    /// </summary>
+    public static bool AchievementRatingsLocked(Review review, int managerId) =>
+        review.Assessments.Any(a => a.ReviewerId == managerId && a.SubmittedAt is not null)
+        || review.ReviewCycle?.RatingsReleased == true
+        || review.ReviewCycle?.Ended == true;
+
     public const int MinProfessionalGoals = 5;
     public const int MinPersonalGoals = 2;
     public const int MinAchievements = 5;

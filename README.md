@@ -57,6 +57,7 @@ AnnualReviewApp/
 │  ├─ Services/                  # JWT token service, review rules
 │  ├─ Controllers/               # Auth, MasterData, Users, Cycles, Reviews
 │  └─ Migrations/                # EF Core migration (InitialCreate)
+├─ backend/PlanReview.Tests/     # xUnit tests (rating maths, freeze rules, reviewer assignment)
 └─ frontend/                     # React + Vite + TypeScript
    └─ src/
       ├─ auth/                   # AuthContext (JWT in localStorage)
@@ -102,7 +103,9 @@ AnnualReviewApp/
   directly (`POST /api/users`). Self-registration remains available for Developers/Managers.
   Admins can **activate/deactivate** any user (`PUT /api/users/{id}/active`) — deactivated users
   cannot sign in and are excluded from peer/manager pickers and cycle releases (you cannot
-  deactivate your own account).
+  deactivate your own account). Deactivation takes effect **immediately**: `IsActive` is
+  re-checked on every authenticated request, so an already-issued token stops working at once
+  rather than lasting until it expires.
 - **Interface** — a collapsible sidebar with **minimalist flat line icons**, and content laid out
   **full-width** to use the whole space beside the sidebar.
 - **Collapsible sidebar** — the left nav collapses to an icon rail (state persisted); it
@@ -137,7 +140,8 @@ AnnualReviewApp/
   it **locks** (`POST /reviews/{id}/submit-midyear`). Manager and peer assessments stay at year-end.
 - **Submit & freeze** — once a reviewer submits their assessment it is **locked** (no re-submit),
   and the dashboards reflect submitted state ("Submitted" / "Mid-year submitted") instead of the
-  action button.
+  action button. A manager's **achievement ratings** freeze on the same rule (their own
+  assessment submitted, or the admin having released ratings / ended the cycle).
 - **Developer performance dashboard** — a **My Performance** page shows each developer their
   self-progress (goal completion, status breakdown) always, and — once the admin releases
   ratings — their self / peer / manager scores, **overall average**, weighted final, percentile
@@ -159,7 +163,8 @@ AnnualReviewApp/
   star scale with a numeric readout; the SMART time-bound field is a target-**date** picker.
 - **Weighted normalized rating** — each developer's final is a weighted average of the
   component scores: **Self 10% · Peer 20% · Manager 1 30% · Manager 2 40%** (the two managers
-  are distinguished by the order the admin assigns them, stored as a per-reviewer weight).
+  are distinguished by the order the admin assigns them, stored as a per-reviewer weight —
+  the assignment endpoint preserves the admin's pick order rather than the database's).
   The self score is the average of the developer's skill self-ratings; each reviewer contributes
   their overall rating. Missing components re-normalize across whatever is present.
 - **Normal-curve fit** — the cohort of finals within a cycle is fitted to a normal curve:
@@ -178,6 +183,27 @@ Draft ──submit──▶ Submitted ──admin assign──▶ InReview ─�
 
 Submission is validated server-side: at least 5 professional goals, at least 2 personal
 goals, every role skill rated, all SMART fields present, and a peer selected.
+
+---
+
+## Tests
+
+```bash
+cd backend && dotnet test        # 36 tests
+```
+
+`backend/PlanReview.Tests` covers the parts where being wrong is expensive:
+
+- **`RatingCalculatorTests`** — the weighted final (Self 10 / Peer 20 / Mgr1 30 / Mgr2 40),
+  re-normalisation when components are missing, unsubmitted assessments being excluded, and the
+  normal-curve maths (population σ, Φ(z) against the standard normal table, band boundaries at
+  ±½σ and ±1½σ, and the σ=0 single-developer cohort).
+- **`AchievementRatingLockTests`** — when a manager's achievement ratings freeze, including that
+  one manager submitting does not lock the other one out.
+- **`AssignReviewersTests`** — runs against real in-memory **SQLite**, because the Manager 1 /
+  Manager 2 slots are decided by the order the admin picks them and EF's `ids.Contains(u.Id)`
+  translates to `WHERE Id IN (...)`, which returns rows in *database* order. These tests pin the
+  admin's ordering, and would silently pass against the in-memory provider.
 
 ---
 

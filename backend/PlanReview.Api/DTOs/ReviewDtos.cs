@@ -153,4 +153,6 @@ public record ReviewDetailDto(
     List<ReviewerDto> Reviewers,
     List<AssessmentDto> Assessments,
     /// <summary>Which manager slot the caller occupies (1 or 2), else null.</summary>
-    int? MyManagerSlot);
+    int? MyManagerSlot,
+    /// <summary>True when the caller may no longer change their achievement ratings.</summary>
+    bool AchievementRatingsLocked);

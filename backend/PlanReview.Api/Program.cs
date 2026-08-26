@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -44,6 +45,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = jwt.Issuer,
             ValidAudience = jwt.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key))
+        };
+
+        // Tokens stay valid for hours, so checking IsActive only at login would leave a
+        // deactivated user with full access until their token expired. Re-check on every
+        // authenticated request so that deactivating an account takes effect immediately.
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!int.TryParse(userId, out var id))
+                {
+                    context.Fail("Missing user id claim.");
+                    return;
+                }
+
+                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var active = await db.Users.AsNoTracking()
+                    .AnyAsync(u => u.Id == id && u.IsActive, context.HttpContext.RequestAborted);
+                if (!active)
+                    context.Fail("This account is no longer active.");
+            }
         };
     });
 builder.Services.AddAuthorization();

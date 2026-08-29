@@ -154,7 +154,7 @@ export default function ReviewViewPage() {
           )}
           {myAssignment?.reviewerType === 'Manager' && review.status !== 'Draft' && review.achievements.length > 0 && (
             review.achievementRatingsLocked
-              ? <p className="muted">Your achievement ratings have been submitted and are now locked.</p>
+              ? <p className="muted">Achievement ratings closed when the half-yearly review was released and are now locked.</p>
               : <AchievementRatingForm review={review} onDone={reload} />
           )}
         </div>
@@ -172,7 +172,8 @@ export default function ReviewViewPage() {
         <div className="card"><h3>Self summary</h3><p style={{ margin: 0 }}>{review.selfSummary}</p></div>
       )}
 
-      {/* Reviewer assessment: editable until submitted, then locked */}
+      {/* Reviewer assessment (professional goals + skill assessment): mandatory at the year-end
+          (final) review. Editable once the final review is released, until submitted, then locked. */}
       {myAssignment && review.status !== 'Draft' && (
         myAssessment?.submittedAt
           ? <div className="card" style={{ borderColor: 'var(--green)' }}>
@@ -181,7 +182,16 @@ export default function ReviewViewPage() {
                 You submitted your review on {new Date(myAssessment.submittedAt).toLocaleDateString()}. It can no longer be changed. Your ratings appear below.
               </p>
             </div>
-          : <AssessmentForm review={review} existing={myAssessment} onDone={reload} />
+          : review.finalReviewReleased
+            ? <AssessmentForm review={review} existing={myAssessment} onDone={reload} />
+            : <div className="card" style={{ borderColor: '#f0d9a8' }}>
+                <h3>Your review <span className="badge InProgress">Opens at year-end</span></h3>
+                <p className="section-hint" style={{ margin: 0 }}>
+                  {myAssignment.reviewerType === 'Manager'
+                    ? <>Rate the previous-year achievements above during this initial phase. Your full assessment — an overall professional-goals rating and a skill assessment — becomes mandatory once the admin releases the year-end (final) review.</>
+                    : <>Your assessment — an overall professional-goals rating and a skill assessment — becomes mandatory once the admin releases the year-end (final) review.</>}
+                </p>
+              </div>
       )}
 
       {/* All submitted assessments */}
@@ -266,9 +276,9 @@ function AchievementRatingForm({ review, onDone }: { review: ReviewDetail; onDon
 
   const submit = async () => {
     setErr(''); setMsg('')
-    const payload = Object.entries(ratings).filter(([, v]) => v > 0)
-      .map(([k, v]) => ({ achievementId: Number(k), rating: v }))
-    if (payload.length === 0) { setErr('Rate at least one achievement.'); return }
+    const unrated = review.achievements.filter((a) => !(ratings[a.id] > 0))
+    if (unrated.length > 0) { setErr(`Rate every previous-year achievement (${unrated.length} still unrated).`); return }
+    const payload = review.achievements.map((a) => ({ achievementId: a.id, rating: ratings[a.id] }))
     setBusy(true)
     try {
       await put(`/api/reviews/${review.id}/achievement-ratings`, { ratings: payload })
@@ -283,8 +293,8 @@ function AchievementRatingForm({ review, onDone }: { review: ReviewDetail; onDon
 
   return (
     <div style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 16 }}>
-      <h3 style={{ marginBottom: 6 }}>Rate these achievements (as a manager)</h3>
-      <p className="section-hint">Your rating lands in your manager slot. Rate each project 1–10.</p>
+      <h3 style={{ marginBottom: 6 }}>Rate previous-year achievements (as a manager)</h3>
+      <p className="section-hint">Mandatory this phase — rate <strong>every</strong> project 1–10 (your rating lands in your manager slot). These close when the half-yearly review is released.</p>
       {msg && <div className="success">{msg}</div>}
       {err && <div className="error">{err}</div>}
       {review.achievements.map((a) => (
@@ -392,7 +402,9 @@ function AssessmentForm({ review, existing, onDone }: {
 
   const submit = async () => {
     setErr(''); setMsg('')
-    if (overall < 1) { setErr('Give an overall rating (1–10).'); return }
+    if (overall < 1) { setErr('Give an overall professional-goals rating (1–10).'); return }
+    const unrated = review.roleSkills.filter((sk) => !(skills[sk.id] > 0))
+    if (unrated.length > 0) { setErr(`Rate every skill in the skill assessment (${unrated.length} still unrated).`); return }
     setBusy(true)
     try {
       await post(`/api/reviews/${review.id}/assessment`, {
@@ -411,21 +423,17 @@ function AssessmentForm({ review, existing, onDone }: {
 
   return (
     <div className="card" style={{ borderColor: 'var(--primary)' }}>
-      <h3>Your assessment</h3>
-      <p className="section-hint">Provide your rating and feedback for this developer. Once submitted, your review is locked.</p>
+      <h3>Your year-end assessment</h3>
+      <p className="section-hint">Mandatory: an overall <strong>professional-goals rating</strong> and a <strong>skill assessment</strong> covering every skill. Strengths / improvements are optional. Once submitted, your review is locked.</p>
       {msg && <div className="success">{msg}</div>}
       {err && <div className="error">{err}</div>}
       <div className="field">
-        <label>Overall rating</label>
+        <label>Overall professional-goals rating <span className="req">*</span></label>
         <StarRating value={overall} onChange={setOverall} />
-      </div>
-      <div className="grid-2">
-        <div className="field"><label>Strengths</label><textarea rows={3} value={strengths} onChange={(e) => setStrengths(e.target.value)} /></div>
-        <div className="field"><label>Areas for improvement</label><textarea rows={3} value={improvements} onChange={(e) => setImprovements(e.target.value)} /></div>
       </div>
       {review.roleSkills.length > 0 && (
         <div className="field">
-          <label>Skill ratings</label>
+          <label>Skill assessment <span className="req">*</span> — rate every skill</label>
           {review.roleSkills.map((sk) => (
             <div key={sk.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
               <span>{sk.name}</span>
@@ -434,6 +442,10 @@ function AssessmentForm({ review, existing, onDone }: {
           ))}
         </div>
       )}
+      <div className="grid-2">
+        <div className="field"><label>Strengths <span className="muted">(optional)</span></label><textarea rows={3} value={strengths} onChange={(e) => setStrengths(e.target.value)} /></div>
+        <div className="field"><label>Areas for improvement <span className="muted">(optional)</span></label><textarea rows={3} value={improvements} onChange={(e) => setImprovements(e.target.value)} /></div>
+      </div>
       <button disabled={busy} onClick={submit}>Submit assessment</button>
     </div>
   )

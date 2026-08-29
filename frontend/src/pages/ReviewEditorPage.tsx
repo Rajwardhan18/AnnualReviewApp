@@ -105,10 +105,16 @@ export default function ReviewEditorPage() {
   const readOnly = review?.status !== 'Draft'
   const midYearSubmitted = !!review?.midYearSubmittedAt
   const finalSubmitted = !!review?.finalReflectionSubmittedAt
-  const midYearOpen = !!review?.halfYearlyReleased && !midYearSubmitted
-  const finalOpen = !!review?.finalReviewReleased && !finalSubmitted
-  // Goal progress + reflections stay editable until the year-end review is submitted.
-  const progressLocked = finalSubmitted
+  // Phase windows for the developer:
+  //  • half-year window — refine goal CONTENT + progress + mid-year reflection (before final release, until mid-year submit)
+  //  • final window     — progress + year-end reflection only; goals are locked
+  const halfYearWindowOpen = !!review?.halfYearlyReleased && !review?.finalReviewReleased && !midYearSubmitted
+  const finalWindowOpen = !!review?.finalReviewReleased && !finalSubmitted
+  const midYearOpen = halfYearWindowOpen
+  const finalOpen = finalWindowOpen
+  const goalsContentEditable = !readOnly || halfYearWindowOpen
+  const progressEditable = halfYearWindowOpen || finalWindowOpen
+  const progressLocked = !progressEditable
 
   const updateGoal = (target: EditGoal, patch: Partial<EditGoal>) =>
     setGoals((gs) => gs.map((g) => (g === target ? { ...g, ...patch } : g)))
@@ -146,6 +152,10 @@ export default function ReviewEditorPage() {
       goals: goals.filter((g) => g.id).map((g) => ({
         goalId: g.id, status: g.status, completionPercentage: g.completionPercentage,
         statusComment: g.statusComment ?? null, statusDate: g.statusDate || null,
+        // Goal content — the server only applies it during the half-yearly window.
+        title: g.title, specific: g.specific, measurable: g.measurable, achievable: g.achievable,
+        relevant: g.relevant, timeBound: g.timeBound,
+        companyTraitId: g.companyTraitId ?? null, target: g.target ?? null,
       })),
       midYearReflection: midYearOpen ? midYear : null,
       finalReflection: finalOpen ? final : null,
@@ -157,6 +167,7 @@ export default function ReviewEditorPage() {
   // Does not touch local state so it never clobbers what the user is typing.
   async function autoSave() {
     if (inFlight.current || busy || !review || finalSubmitted) return
+    if (readOnly && !progressEditable) return // nothing editable in this phase
     inFlight.current = true
     setSaveState('saving')
     try {
@@ -176,6 +187,7 @@ export default function ReviewEditorPage() {
   // Debounce: schedule an auto-save ~1.2s after the last edit to any field.
   useEffect(() => {
     if (!review || finalSubmitted) return
+    if (readOnly && !progressEditable) return // frozen phase — nothing to auto-save
     if (!hydrated.current) { hydrated.current = true; return } // ignore the load-time hydration
     setSaveState('pending')
     window.clearTimeout(autoSaveTimer.current)
@@ -321,41 +333,42 @@ export default function ReviewEditorPage() {
           </div>
         </div>
       ) : (
-        <div className="card" style={{ borderColor: finalSubmitted ? 'var(--green)' : 'var(--primary)' }}>
+        <div className="card" style={{ borderColor: finalSubmitted ? 'var(--green)' : (midYearOpen || finalOpen) ? 'var(--primary)' : '#f0d9a8' }}>
           <h3>
             {finalSubmitted || review.finalReviewReleased ? 'Year-end review'
               : review.halfYearlyReleased ? 'Half-yearly review'
-              : 'Track goal progress'}
+              : 'Plan submitted'}
             {finalSubmitted && <span className="badge Completed" style={{ marginLeft: 8 }}>Submitted &amp; locked</span>}
+            {midYearSubmitted && !review.finalReviewReleased && <span className="badge Completed" style={{ marginLeft: 8 }}>Mid-year submitted</span>}
           </h3>
           <p className="section-hint" style={{ margin: 0 }}>
             {finalSubmitted
               ? <>Your year-end review was submitted on {new Date(review.finalReflectionSubmittedAt!).toLocaleDateString()} and is now locked.</>
               : finalOpen
-                ? <>The year-end review is open{review.finalReviewDueDate ? ` (due ${new Date(review.finalReviewDueDate).toLocaleDateString()})` : ''}. Update your final goal progress, write your year-end self-reflection below, then submit. This is your final self-assessment for the cycle.</>
+                ? <>The year-end review is open{review.finalReviewDueDate ? ` (due ${new Date(review.finalReviewDueDate).toLocaleDateString()})` : ''}. Update your final goal progress and write your year-end self-reflection, then submit. <strong>Goals are locked now</strong> — you can update progress only. Managers &amp; your peer complete their reviews in this phase too.</>
                 : midYearSubmitted
-                  ? <>Your mid-year review was submitted on {new Date(review.midYearSubmittedAt!).toLocaleDateString()}. Keep your goal progress up to date — your year-end self-reflection opens when the year-end review is released.</>
+                  ? <>Your mid-year review was submitted on {new Date(review.midYearSubmittedAt!).toLocaleDateString()} and is locked. Nothing to do until the admin releases the year-end review.</>
                   : review.halfYearlyReleased
-                    ? <>The mid-year checkpoint is open{review.halfYearlyDueDate ? ` (due ${new Date(review.halfYearlyDueDate).toLocaleDateString()})` : ''}. Update your goal progress below, add a mid-year reflection, then submit. Manager &amp; peer reviews stay at year-end.</>
-                    : <>This plan is submitted and locked, but you can update each goal's status, completion % and notes through the year.</>}
+                    ? <>The half-yearly review is open{review.halfYearlyDueDate ? ` (due ${new Date(review.halfYearlyDueDate).toLocaleDateString()})` : ''}. You can <strong>refine your goals</strong> and update progress in the tabs below, add a mid-year reflection, then submit. Manager &amp; peer reviews stay at year-end.</>
+                    : <>Your plan is submitted and locked. Your assigned managers are rating your previous-year achievements now. You'll be able to update progress when the half-yearly review is released.</>}
             {' '}
             <button className="ghost small" onClick={() => navigate(`/reviews/${reviewId}`)}>View full review →</button>
           </p>
           {review.halfYearlyReleased && (
             <div className="field" style={{ marginTop: 12 }}>
               <label>Mid-year reflection{midYearSubmitted && ' · submitted'}</label>
-              <textarea rows={3} value={midYear} disabled={midYearSubmitted} onChange={(e) => setMidYear(e.target.value)}
+              <textarea rows={3} value={midYear} disabled={!midYearOpen} onChange={(e) => setMidYear(e.target.value)}
                 placeholder="How is the year tracking? Wins, blockers, changes in focus…" />
             </div>
           )}
           {review.finalReviewReleased && (
             <div className="field" style={{ marginTop: 12 }}>
               <label>Year-end self-reflection{finalSubmitted && ' · submitted'}</label>
-              <textarea rows={4} value={final} disabled={finalSubmitted} onChange={(e) => setFinal(e.target.value)}
+              <textarea rows={4} value={final} disabled={!finalOpen} onChange={(e) => setFinal(e.target.value)}
                 placeholder="Reflect on the full year — your biggest achievements, what you learned, how you grew against your goals, and where you want to focus next." />
             </div>
           )}
-          {!finalSubmitted && (
+          {(midYearOpen || finalOpen) && (
             <div className="btn-row" style={{ marginTop: 12 }}>
               <button className="secondary" disabled={busy} onClick={saveProgress}>Save progress</button>
               {midYearOpen && <button disabled={busy} onClick={submitMidYear}>Submit mid-year review</button>}
@@ -364,7 +377,7 @@ export default function ReviewEditorPage() {
               <span className="muted">
                 Progress saves automatically.
                 {finalOpen ? ' Submitting locks your year-end review.'
-                  : midYearOpen ? ' Submitting locks your mid-year review.' : ''}
+                  : ' Submitting locks your mid-year review.'}
               </span>
             </div>
           )}
@@ -410,7 +423,7 @@ export default function ReviewEditorPage() {
           <h3>Professional Goals</h3>
           <p className="section-hint">Minimum {MIN_PROFESSIONAL} goals, each in the SMART template and tagged to a company trait.</p>
           {professional.map((g, i) => (
-            <GoalAccordion key={`pro-${i}`} goal={g} index={i} traits={traits} planReadOnly={readOnly} progressLocked={progressLocked}
+            <GoalAccordion key={`pro-${i}`} goal={g} index={i} traits={traits} planReadOnly={!goalsContentEditable} progressLocked={progressLocked} canRemove={!readOnly}
               onChange={(patch) => updateGoal(g, patch)} onRemove={() => removeGoal(g)} />
           ))}
           {!readOnly && <button className="secondary" onClick={() => addGoal('Professional')}>+ Add professional goal</button>}
@@ -461,7 +474,7 @@ export default function ReviewEditorPage() {
           <h3>Personal Goals</h3>
           <p className="section-hint">Minimum {MIN_PERSONAL} goals, each in the SMART template and tagged to a company trait.</p>
           {personal.map((g, i) => (
-            <GoalAccordion key={`per-${i}`} goal={g} index={i} traits={traits} planReadOnly={readOnly} progressLocked={progressLocked}
+            <GoalAccordion key={`per-${i}`} goal={g} index={i} traits={traits} planReadOnly={!goalsContentEditable} progressLocked={progressLocked} canRemove={!readOnly}
               onChange={(patch) => updateGoal(g, patch)} onRemove={() => removeGoal(g)} />
           ))}
           {!readOnly && <button className="secondary" onClick={() => addGoal('Personal')}>+ Add personal goal</button>}
@@ -551,12 +564,13 @@ function TextList({ items, setItems, readOnly, placeholder, addLabel, multiline 
   )
 }
 
-function GoalAccordion({ goal, index, traits, planReadOnly, progressLocked, onChange, onRemove }: {
+function GoalAccordion({ goal, index, traits, planReadOnly, progressLocked, canRemove, onChange, onRemove }: {
   goal: EditGoal
   index: number
   traits: CompanyTrait[]
   planReadOnly: boolean
   progressLocked?: boolean
+  canRemove?: boolean
   onChange: (patch: Partial<EditGoal>) => void
   onRemove: () => void
 }) {
@@ -577,7 +591,7 @@ function GoalAccordion({ goal, index, traits, planReadOnly, progressLocked, onCh
         </span>
         <span className={`badge ${goal.status}`}>{STATUS_LABEL[goal.status]} · {goal.completionPercentage}%</span>
         <span className={`acc-status ${complete ? 'ok' : 'todo'}`}>{complete ? 'Complete' : 'Incomplete'}</span>
-        {!planReadOnly && (
+        {canRemove && (
           <button className="danger small" onClick={(e) => { e.stopPropagation(); onRemove() }}>Remove</button>
         )}
       </div>

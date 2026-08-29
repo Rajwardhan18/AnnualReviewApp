@@ -6,13 +6,13 @@ namespace PlanReview.Api.Services;
 public static class ReviewRules
 {
     /// <summary>
-    /// Whether <paramref name="managerId"/> can still change their achievement ratings.
-    /// They freeze once that manager has submitted their assessment, or once the admin has
-    /// released ratings or ended the cycle — matching the submit-and-freeze rule used by
-    /// the plan, the mid-year checkpoint and the reviewer assessments.
+    /// Whether the previous-year achievement ratings can still be changed. Rating achievements is
+    /// the reviewers' <em>initial</em>-phase task, so the ratings freeze once the half-yearly review
+    /// is released (and stay frozen once ratings are released or the cycle ends). The manager id is
+    /// no longer part of the rule — achievement ratings freeze for everyone at the same phase.
     /// </summary>
-    public static bool AchievementRatingsLocked(Review review, int managerId) =>
-        review.Assessments.Any(a => a.ReviewerId == managerId && a.SubmittedAt is not null)
+    public static bool AchievementRatingsLocked(Review review, int managerId = 0) =>
+        review.ReviewCycle?.HalfYearlyReleased == true
         || review.ReviewCycle?.RatingsReleased == true
         || review.ReviewCycle?.Ended == true;
 

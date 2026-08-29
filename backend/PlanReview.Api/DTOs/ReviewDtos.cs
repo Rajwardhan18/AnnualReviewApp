@@ -39,12 +39,22 @@ public record GoalInput(
     string? Target);
 
 // ---- Goal progress (updatable any time by the developer) ----
+// The optional content fields (Title..Target) are only applied during the half-yearly
+// window, when developers may still refine their goals; they are ignored otherwise.
 public record GoalProgressInput(
     [Required] int GoalId,
     GoalStatus Status,
     [Range(0, 100)] int CompletionPercentage,
     string? StatusComment,
-    DateTime? StatusDate);
+    DateTime? StatusDate,
+    string? Title = null,
+    string? Specific = null,
+    string? Measurable = null,
+    string? Achievable = null,
+    string? Relevant = null,
+    string? TimeBound = null,
+    int? CompanyTraitId = null,
+    string? Target = null);
 public record SaveProgressRequest(List<GoalProgressInput> Goals, string? MidYearReflection, string? FinalReflection);
 
 // ---- Previous-year achievement (project delivered last year) ----

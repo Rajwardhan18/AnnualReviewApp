@@ -281,8 +281,16 @@ public class ReviewsController : ControllerBase
         return await BuildDetail((await LoadFull(id))!);
     }
 
+    /// <summary>The half-yearly window is the only time a developer may still refine goal *content*
+    /// (SMART fields, trait, target). Outside it, only progress (status / % / notes) is editable.</summary>
+    private static bool GoalContentEditable(Review review) =>
+        review.ReviewCycle?.HalfYearlyReleased == true
+        && review.ReviewCycle?.FinalReviewReleased != true
+        && review.MidYearSubmittedAt is null;
+
     private static void ApplyProgress(Review review, SaveProgressRequest req)
     {
+        var contentEditable = GoalContentEditable(review);
         foreach (var p in req.Goals)
         {
             var goal = review.Goals.FirstOrDefault(g => g.Id == p.GoalId);
@@ -291,6 +299,17 @@ public class ReviewsController : ControllerBase
             goal.CompletionPercentage = Math.Clamp(p.CompletionPercentage, 0, 100);
             goal.StatusComment = p.StatusComment;
             goal.StatusDate = p.StatusDate;
+            if (contentEditable)
+            {
+                if (p.Title is not null) goal.Title = p.Title.Trim();
+                if (p.Specific is not null) goal.Specific = p.Specific;
+                if (p.Measurable is not null) goal.Measurable = p.Measurable;
+                if (p.Achievable is not null) goal.Achievable = p.Achievable;
+                if (p.Relevant is not null) goal.Relevant = p.Relevant;
+                if (p.TimeBound is not null) goal.TimeBound = p.TimeBound;
+                goal.CompanyTraitId = p.CompanyTraitId;
+                goal.Target = p.Target;
+            }
         }
         // Each reflection only updates while its own checkpoint is still open (unsubmitted).
         if (req.MidYearReflection is not null && review.MidYearSubmittedAt is null)
@@ -381,10 +400,23 @@ public class ReviewsController : ControllerBase
             return Forbid();
         if (review.Status == ReviewStatus.Draft)
             return BadRequest(new { message = "The developer has not submitted this plan yet." });
+        // The manager/peer assessment (professional goals + skill assessment) is the year-end task.
+        if (review.ReviewCycle?.FinalReviewReleased != true)
+            return BadRequest(new { message = "The year-end review has not been opened yet — assessments are due after the final release." });
 
         var existing = review.Assessments.FirstOrDefault(a => a.ReviewerId == me);
         if (existing?.SubmittedAt is not null)
             return BadRequest(new { message = "You have already submitted your review — it is now locked." });
+
+        // Mandatory at the year-end review: an overall professional-goals rating (enforced by the
+        // DTO's [Range(1,10)]) and a rating for every one of the developer's role skills.
+        var roleSkillIds = review.RoleId is null
+            ? new HashSet<int>()
+            : (await _db.RoleSkills.Where(rs => rs.RoleId == review.RoleId)
+                .Select(rs => rs.SkillId).ToListAsync()).ToHashSet();
+        var ratedSkillIds = req.SkillRatings.Select(s => s.SkillId).ToHashSet();
+        if (roleSkillIds.Count > 0 && !roleSkillIds.All(id => ratedSkillIds.Contains(id)))
+            return BadRequest(new { message = "Please rate every skill in the skill assessment before submitting." });
 
         var assessment = existing;
         if (assessment is null)
@@ -435,11 +467,13 @@ public class ReviewsController : ControllerBase
         var assignment = review.Reviewers.FirstOrDefault(r => r.ReviewerId == me);
         if (assignment is null || assignment.ReviewerType != ReviewerType.Manager)
             return Forbid();
+        if (review.Status == ReviewStatus.Draft)
+            return BadRequest(new { message = "The developer has not submitted this plan yet." });
 
-        // Submit-and-freeze: ratings are final once this manager has submitted their assessment,
-        // and nobody may move them after the developer has been shown their released ratings.
-        if (ReviewRules.AchievementRatingsLocked(review, me))
-            return BadRequest(new { message = "Achievement ratings are locked and can no longer be changed." });
+        // Achievement ratings are the reviewers' initial-phase task and freeze once the
+        // half-yearly review is released (or ratings are released / the cycle ends).
+        if (ReviewRules.AchievementRatingsLocked(review))
+            return BadRequest(new { message = "Achievement ratings are locked — they close when the half-yearly review is released." });
 
         var isManager2 = assignment.Weight >= (ReviewRules.Manager1Weight + ReviewRules.Manager2Weight) / 2;
 

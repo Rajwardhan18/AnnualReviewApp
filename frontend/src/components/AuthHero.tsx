@@ -9,7 +9,7 @@ const PILLARS = [
   { word: 'Strategize', color: 'var(--p-strategize)' },
 ]
 
-/** Branded ARISe hero panel shared by the login and register screens. */
+/** Branded ARISe hero panel shared by the login and password screens. */
 export default function AuthHero() {
   return (
     <div className="auth-hero">

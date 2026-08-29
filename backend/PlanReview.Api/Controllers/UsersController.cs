@@ -52,7 +52,9 @@ public class UsersController : ControllerBase
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
             UserType = req.UserType,
             FunctionId = req.UserType == UserType.Developer ? req.FunctionId : null,
-            RoleId = req.UserType == UserType.Developer ? req.RoleId : null
+            RoleId = req.UserType == UserType.Developer ? req.RoleId : null,
+            // Admin sets an initial password; the user must change it at first login.
+            MustChangePassword = true
         };
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
@@ -71,6 +73,8 @@ public class UsersController : ControllerBase
         if (user is null) return NotFound(new { message = "User not found." });
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
+        // The admin set a temporary password; force the user to change it at next login.
+        user.MustChangePassword = true;
         await _db.SaveChangesAsync();
         return Ok(new { message = $"Password reset for {user.FullName}." });
     }
@@ -111,5 +115,5 @@ public class UsersController : ControllerBase
     private static UserDto ToDto(User u) => new(
         u.Id, u.FullName, u.Email, u.UserType,
         u.FunctionId, u.Function != null ? u.Function.Name : null,
-        u.RoleId, u.Role != null ? u.Role.Name : null, u.IsActive);
+        u.RoleId, u.Role != null ? u.Role.Name : null, u.IsActive, u.MustChangePassword);
 }

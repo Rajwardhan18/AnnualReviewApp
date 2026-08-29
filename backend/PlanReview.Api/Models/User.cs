@@ -20,6 +20,10 @@ public class User
     /// <summary>Deactivated users cannot sign in.</summary>
     public bool IsActive { get; set; } = true;
 
+    /// <summary>When true, the user must set a new password before using the app.
+    /// Set for admin-created accounts and admin password resets.</summary>
+    public bool MustChangePassword { get; set; }
+
     // Developer-only attributes. Null for Managers / Admins.
     public int? FunctionId { get; set; }
     public Function? Function { get; set; }

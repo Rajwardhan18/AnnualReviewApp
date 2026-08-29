@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import AuthHero from '../components/AuthHero'
 
@@ -16,8 +16,8 @@ export default function LoginPage() {
     setError('')
     setBusy(true)
     try {
-      await login(email, password)
-      navigate('/')
+      const u = await login(email, password)
+      navigate(u.mustChangePassword ? '/change-password' : '/')
     } catch (err: any) {
       setError(err.message || 'Login failed')
     } finally {
@@ -48,7 +48,7 @@ export default function LoginPage() {
             </button>
           </form>
           <p className="muted" style={{ marginTop: 16 }}>
-            New here? <Link to="/register">Create an account</Link>
+            Accounts are created by your administrator. Contact them if you need access or a password reset.
           </p>
         </div>
       </div>

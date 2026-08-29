@@ -14,6 +14,7 @@ export interface User {
   roleId?: number | null
   roleName?: string | null
   isActive: boolean
+  mustChangePassword: boolean
 }
 
 export interface AuthResponse { token: string; user: User }

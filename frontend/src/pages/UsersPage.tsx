@@ -128,7 +128,7 @@ function ResetPasswordForm({ user, onCancel, onDone }: {
     setBusy(true)
     try {
       await post(`/api/users/${user.id}/reset-password`, { newPassword: pw })
-      onDone(`Password reset for ${user.fullName} (${user.email}). Share the new password securely — they should change it after signing in.`)
+      onDone(`Password reset for ${user.fullName} (${user.email}). Share the new password securely — they'll be prompted to set their own password at next login.`)
     } catch (e: any) {
       setErr(e instanceof ApiError ? e.message : 'Failed to reset password')
     } finally {
@@ -208,7 +208,7 @@ function AddUserForm({ onCreated }: { onCreated: () => void }) {
   return (
     <div className="card">
       <h2>Add a user</h2>
-      <p className="section-hint">The user can sign in immediately with the email and password you set here.</p>
+      <p className="section-hint">The user signs in with the email and temporary password you set here, then is prompted to choose their own password at first login.</p>
       {err && <div className="error">{err}</div>}
       {msg && <div className="success">{msg}</div>}
       <form onSubmit={submit}>

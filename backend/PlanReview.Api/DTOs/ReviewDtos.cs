@@ -45,7 +45,7 @@ public record GoalProgressInput(
     [Range(0, 100)] int CompletionPercentage,
     string? StatusComment,
     DateTime? StatusDate);
-public record SaveProgressRequest(List<GoalProgressInput> Goals, string? MidYearReflection);
+public record SaveProgressRequest(List<GoalProgressInput> Goals, string? MidYearReflection, string? FinalReflection);
 
 // ---- Previous-year achievement (project delivered last year) ----
 public record AchievementDto(
@@ -143,6 +143,10 @@ public record ReviewDetailDto(
     DateTime? MidYearSubmittedAt,
     bool HalfYearlyReleased,
     DateTime? HalfYearlyDueDate,
+    string? FinalReflection,
+    DateTime? FinalReflectionSubmittedAt,
+    bool FinalReviewReleased,
+    DateTime? FinalReviewDueDate,
     DateTime? DueDate,
     List<GoalDto> Goals,
     List<AchievementDto> Achievements,

@@ -48,6 +48,7 @@ export default function ReviewEditorPage() {
   const [peerId, setPeerId] = useState<number | ''>('')
   const [summary, setSummary] = useState('')
   const [midYear, setMidYear] = useState('')
+  const [final, setFinal] = useState('')
 
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -74,6 +75,7 @@ export default function ReviewEditorPage() {
       setPeerId(r.selectedPeerId ?? '')
       setSummary(r.selfSummary ?? '')
       setMidYear(r.midYearReflection ?? '')
+      setFinal(r.finalReflection ?? '')
 
       // Requirement 5: default to a single starter goal per section; users add the rest.
       if (r.goals.length > 0) {
@@ -102,6 +104,11 @@ export default function ReviewEditorPage() {
   const personal = useMemo(() => goals.filter((g) => g.goalType === 'Personal'), [goals])
   const readOnly = review?.status !== 'Draft'
   const midYearSubmitted = !!review?.midYearSubmittedAt
+  const finalSubmitted = !!review?.finalReflectionSubmittedAt
+  const midYearOpen = !!review?.halfYearlyReleased && !midYearSubmitted
+  const finalOpen = !!review?.finalReviewReleased && !finalSubmitted
+  // Goal progress + reflections stay editable until the year-end review is submitted.
+  const progressLocked = finalSubmitted
 
   const updateGoal = (target: EditGoal, patch: Partial<EditGoal>) =>
     setGoals((gs) => gs.map((g) => (g === target ? { ...g, ...patch } : g)))
@@ -132,24 +139,31 @@ export default function ReviewEditorPage() {
     }
   }
 
+  // Progress payload (goal status/notes + reflections). Each reflection is only sent while its
+  // own checkpoint is open, so a submitted-and-locked reflection is never overwritten.
+  function buildProgressPayload() {
+    return {
+      goals: goals.filter((g) => g.id).map((g) => ({
+        goalId: g.id, status: g.status, completionPercentage: g.completionPercentage,
+        statusComment: g.statusComment ?? null, statusDate: g.statusDate || null,
+      })),
+      midYearReflection: midYearOpen ? midYear : null,
+      finalReflection: finalOpen ? final : null,
+    }
+  }
+
   // Silently persist whatever is currently editable: the draft plan while the
   // review is a Draft, or goal progress + mid-year reflection once submitted.
   // Does not touch local state so it never clobbers what the user is typing.
   async function autoSave() {
-    if (inFlight.current || busy || !review || midYearSubmitted) return
+    if (inFlight.current || busy || !review || finalSubmitted) return
     inFlight.current = true
     setSaveState('saving')
     try {
       if (!readOnly) {
         await put<ReviewDetail>(`/api/reviews/${reviewId}/plan`, buildPayload())
       } else {
-        await put<ReviewDetail>(`/api/reviews/${reviewId}/progress`, {
-          goals: goals.filter((g) => g.id).map((g) => ({
-            goalId: g.id, status: g.status, completionPercentage: g.completionPercentage,
-            statusComment: g.statusComment ?? null, statusDate: g.statusDate || null,
-          })),
-          midYearReflection: review.halfYearlyReleased ? midYear : null,
-        })
+        await put<ReviewDetail>(`/api/reviews/${reviewId}/progress`, buildProgressPayload())
       }
       setSaveState('saved')
     } catch {
@@ -161,14 +175,14 @@ export default function ReviewEditorPage() {
 
   // Debounce: schedule an auto-save ~1.2s after the last edit to any field.
   useEffect(() => {
-    if (!review || midYearSubmitted) return
+    if (!review || finalSubmitted) return
     if (!hydrated.current) { hydrated.current = true; return } // ignore the load-time hydration
     setSaveState('pending')
     window.clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = window.setTimeout(() => { void autoSave() }, 1200)
     return () => window.clearTimeout(autoSaveTimer.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goals, achievements, rnd, future, ratings, peerId, summary, midYear])
+  }, [goals, achievements, rnd, future, ratings, peerId, summary, midYear, final])
 
   async function save(thenSubmit: boolean) {
     window.clearTimeout(autoSaveTimer.current)
@@ -199,14 +213,7 @@ export default function ReviewEditorPage() {
     window.clearTimeout(autoSaveTimer.current)
     setErrors([]); setMessage(''); setBusy(true)
     try {
-      const payload = {
-        goals: goals.filter((g) => g.id).map((g) => ({
-          goalId: g.id, status: g.status, completionPercentage: g.completionPercentage,
-          statusComment: g.statusComment ?? null, statusDate: g.statusDate || null,
-        })),
-        midYearReflection: review?.halfYearlyReleased ? midYear : null,
-      }
-      const updated = await put<ReviewDetail>(`/api/reviews/${reviewId}/progress`, payload)
+      const updated = await put<ReviewDetail>(`/api/reviews/${reviewId}/progress`, buildProgressPayload())
       setReview(updated)
       setSaveState('saved')
       setMessage('Goal progress saved.')
@@ -223,16 +230,24 @@ export default function ReviewEditorPage() {
     window.clearTimeout(autoSaveTimer.current)
     setErrors([]); setMessage(''); setBusy(true)
     try {
-      const payload = {
-        goals: goals.filter((g) => g.id).map((g) => ({
-          goalId: g.id, status: g.status, completionPercentage: g.completionPercentage,
-          statusComment: g.statusComment ?? null, statusDate: g.statusDate || null,
-        })),
-        midYearReflection: midYear,
-      }
-      const updated = await post<ReviewDetail>(`/api/reviews/${reviewId}/submit-midyear`, payload)
+      const updated = await post<ReviewDetail>(`/api/reviews/${reviewId}/submit-midyear`, buildProgressPayload())
       setReview(updated)
       setMessage('Your mid-year review has been submitted and is now locked.')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch (e: any) {
+      setErrors([e.message || 'Submit failed'])
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitFinal() {
+    window.clearTimeout(autoSaveTimer.current)
+    setErrors([]); setMessage(''); setBusy(true)
+    try {
+      const updated = await post<ReviewDetail>(`/api/reviews/${reviewId}/submit-final`, buildProgressPayload())
+      setReview(updated)
+      setMessage('Your year-end review has been submitted and is now locked.')
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (e: any) {
       setErrors([e.message || 'Submit failed'])
@@ -259,7 +274,7 @@ export default function ReviewEditorPage() {
   ]
   const allMet = criteria.every((c) => c.met)
 
-  const autoSaveBadge = midYearSubmitted ? null : (
+  const autoSaveBadge = finalSubmitted ? null : (
     saveState === 'saving' ? <span className="autosave saving"><span className="dot" />Saving…</span>
     : saveState === 'pending' ? <span className="autosave pending"><span className="dot" />Unsaved changes…</span>
     : saveState === 'saved' ? <span className="autosave saved">✓ All changes saved</span>
@@ -306,41 +321,51 @@ export default function ReviewEditorPage() {
           </div>
         </div>
       ) : (
-        <div className="card" style={{ borderColor: midYearSubmitted ? 'var(--green)' : 'var(--primary)' }}>
+        <div className="card" style={{ borderColor: finalSubmitted ? 'var(--green)' : 'var(--primary)' }}>
           <h3>
-            {review.halfYearlyReleased ? 'Half-yearly review' : 'Track goal progress'}
-            {midYearSubmitted && <span className="badge Completed" style={{ marginLeft: 8 }}>Submitted &amp; locked</span>}
+            {finalSubmitted || review.finalReviewReleased ? 'Year-end review'
+              : review.halfYearlyReleased ? 'Half-yearly review'
+              : 'Track goal progress'}
+            {finalSubmitted && <span className="badge Completed" style={{ marginLeft: 8 }}>Submitted &amp; locked</span>}
           </h3>
           <p className="section-hint" style={{ margin: 0 }}>
-            {midYearSubmitted
-              ? <>Your mid-year review was submitted on {new Date(review.midYearSubmittedAt!).toLocaleDateString()} and is now locked.</>
-              : review.halfYearlyReleased
-                ? <>The mid-year checkpoint is open{review.halfYearlyDueDate ? ` (due ${new Date(review.halfYearlyDueDate).toLocaleDateString()})` : ''}. Update your goal progress below, add a mid-year reflection, then submit. Manager &amp; peer reviews stay at year-end.</>
-                : <>This plan is submitted and locked, but you can update each goal's status, completion % and notes through the year.</>}
+            {finalSubmitted
+              ? <>Your year-end review was submitted on {new Date(review.finalReflectionSubmittedAt!).toLocaleDateString()} and is now locked.</>
+              : finalOpen
+                ? <>The year-end review is open{review.finalReviewDueDate ? ` (due ${new Date(review.finalReviewDueDate).toLocaleDateString()})` : ''}. Update your final goal progress, write your year-end self-reflection below, then submit. This is your final self-assessment for the cycle.</>
+                : midYearSubmitted
+                  ? <>Your mid-year review was submitted on {new Date(review.midYearSubmittedAt!).toLocaleDateString()}. Keep your goal progress up to date — your year-end self-reflection opens when the year-end review is released.</>
+                  : review.halfYearlyReleased
+                    ? <>The mid-year checkpoint is open{review.halfYearlyDueDate ? ` (due ${new Date(review.halfYearlyDueDate).toLocaleDateString()})` : ''}. Update your goal progress below, add a mid-year reflection, then submit. Manager &amp; peer reviews stay at year-end.</>
+                    : <>This plan is submitted and locked, but you can update each goal's status, completion % and notes through the year.</>}
             {' '}
             <button className="ghost small" onClick={() => navigate(`/reviews/${reviewId}`)}>View full review →</button>
           </p>
           {review.halfYearlyReleased && (
             <div className="field" style={{ marginTop: 12 }}>
-              <label>Mid-year reflection</label>
+              <label>Mid-year reflection{midYearSubmitted && ' · submitted'}</label>
               <textarea rows={3} value={midYear} disabled={midYearSubmitted} onChange={(e) => setMidYear(e.target.value)}
                 placeholder="How is the year tracking? Wins, blockers, changes in focus…" />
             </div>
           )}
-          {!midYearSubmitted && (
+          {review.finalReviewReleased && (
+            <div className="field" style={{ marginTop: 12 }}>
+              <label>Year-end self-reflection{finalSubmitted && ' · submitted'}</label>
+              <textarea rows={4} value={final} disabled={finalSubmitted} onChange={(e) => setFinal(e.target.value)}
+                placeholder="Reflect on the full year — your biggest achievements, what you learned, how you grew against your goals, and where you want to focus next." />
+            </div>
+          )}
+          {!finalSubmitted && (
             <div className="btn-row" style={{ marginTop: 12 }}>
-              {review.halfYearlyReleased
-                ? <>
-                    <button className="secondary" disabled={busy} onClick={saveProgress}>Save progress</button>
-                    <button disabled={busy} onClick={submitMidYear}>Submit mid-year review</button>
-                    {autoSaveBadge}
-                    <span className="muted">Progress saves automatically. Submitting locks your mid-year review.</span>
-                  </>
-                : <>
-                    <button disabled={busy} onClick={saveProgress}>Save goal progress</button>
-                    {autoSaveBadge}
-                    <span className="muted">Progress saves automatically as you type.</span>
-                  </>}
+              <button className="secondary" disabled={busy} onClick={saveProgress}>Save progress</button>
+              {midYearOpen && <button disabled={busy} onClick={submitMidYear}>Submit mid-year review</button>}
+              {finalOpen && <button disabled={busy} onClick={submitFinal}>Submit year-end review</button>}
+              {autoSaveBadge}
+              <span className="muted">
+                Progress saves automatically.
+                {finalOpen ? ' Submitting locks your year-end review.'
+                  : midYearOpen ? ' Submitting locks your mid-year review.' : ''}
+              </span>
             </div>
           )}
         </div>
@@ -385,7 +410,7 @@ export default function ReviewEditorPage() {
           <h3>Professional Goals</h3>
           <p className="section-hint">Minimum {MIN_PROFESSIONAL} goals, each in the SMART template and tagged to a company trait.</p>
           {professional.map((g, i) => (
-            <GoalAccordion key={`pro-${i}`} goal={g} index={i} traits={traits} planReadOnly={readOnly} progressLocked={midYearSubmitted}
+            <GoalAccordion key={`pro-${i}`} goal={g} index={i} traits={traits} planReadOnly={readOnly} progressLocked={progressLocked}
               onChange={(patch) => updateGoal(g, patch)} onRemove={() => removeGoal(g)} />
           ))}
           {!readOnly && <button className="secondary" onClick={() => addGoal('Professional')}>+ Add professional goal</button>}
@@ -436,7 +461,7 @@ export default function ReviewEditorPage() {
           <h3>Personal Goals</h3>
           <p className="section-hint">Minimum {MIN_PERSONAL} goals, each in the SMART template and tagged to a company trait.</p>
           {personal.map((g, i) => (
-            <GoalAccordion key={`per-${i}`} goal={g} index={i} traits={traits} planReadOnly={readOnly} progressLocked={midYearSubmitted}
+            <GoalAccordion key={`per-${i}`} goal={g} index={i} traits={traits} planReadOnly={readOnly} progressLocked={progressLocked}
               onChange={(patch) => updateGoal(g, patch)} onRemove={() => removeGoal(g)} />
           ))}
           {!readOnly && <button className="secondary" onClick={() => addGoal('Personal')}>+ Add personal goal</button>}

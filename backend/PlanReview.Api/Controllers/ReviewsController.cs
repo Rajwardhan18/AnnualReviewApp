@@ -233,8 +233,8 @@ public class ReviewsController : ControllerBase
 
         var me = User.GetUserId();
         if (review.DeveloperId != me) return Forbid();
-        if (review.MidYearSubmittedAt is not null)
-            return BadRequest(new { message = "Your mid-year review has been submitted and is locked." });
+        if (review.FinalReflectionSubmittedAt is not null)
+            return BadRequest(new { message = "Your year-end review has been submitted and is locked." });
 
         ApplyProgress(review, req);
         await _db.SaveChangesAsync();
@@ -261,6 +261,26 @@ public class ReviewsController : ControllerBase
         return await BuildDetail((await LoadFull(id))!);
     }
 
+    /// <summary>Submit the year-end review — saves final progress + self-reflection and freezes it.</summary>
+    [HttpPost("{id:int}/submit-final")]
+    public async Task<ActionResult<ReviewDetailDto>> SubmitFinal(int id, SaveProgressRequest req)
+    {
+        var review = await LoadFull(id);
+        if (review is null) return NotFound();
+
+        var me = User.GetUserId();
+        if (review.DeveloperId != me) return Forbid();
+        if (review.ReviewCycle?.FinalReviewReleased != true)
+            return BadRequest(new { message = "The year-end review has not been opened yet." });
+        if (review.FinalReflectionSubmittedAt is not null)
+            return BadRequest(new { message = "Your year-end review has already been submitted." });
+
+        ApplyProgress(review, req);
+        review.FinalReflectionSubmittedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return await BuildDetail((await LoadFull(id))!);
+    }
+
     private static void ApplyProgress(Review review, SaveProgressRequest req)
     {
         foreach (var p in req.Goals)
@@ -272,10 +292,16 @@ public class ReviewsController : ControllerBase
             goal.StatusComment = p.StatusComment;
             goal.StatusDate = p.StatusDate;
         }
-        if (req.MidYearReflection is not null)
+        // Each reflection only updates while its own checkpoint is still open (unsubmitted).
+        if (req.MidYearReflection is not null && review.MidYearSubmittedAt is null)
         {
             review.MidYearReflection = req.MidYearReflection;
             review.MidYearUpdatedAt = DateTime.UtcNow;
+        }
+        if (req.FinalReflection is not null && review.FinalReflectionSubmittedAt is null)
+        {
+            review.FinalReflection = req.FinalReflection;
+            review.FinalReflectionUpdatedAt = DateTime.UtcNow;
         }
     }
 
@@ -562,6 +588,10 @@ public class ReviewsController : ControllerBase
             r.MidYearSubmittedAt,
             r.ReviewCycle?.HalfYearlyReleased ?? false,
             r.ReviewCycle?.HalfYearlyDueDate,
+            r.FinalReflection,
+            r.FinalReflectionSubmittedAt,
+            r.ReviewCycle?.FinalReviewReleased ?? false,
+            r.ReviewCycle?.FinalReviewDueDate,
             r.ReviewCycle?.DueDate,
             r.Goals.Select(g => new GoalDto(g.Id, g.GoalType, g.Title, g.Specific, g.Measurable,
                 g.Achievable, g.Relevant, g.TimeBound, g.CompanyTraitId, g.CompanyTrait?.Name,

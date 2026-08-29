@@ -164,6 +164,10 @@ export interface ReviewDetail {
   midYearSubmittedAt?: string | null
   halfYearlyReleased: boolean
   halfYearlyDueDate?: string | null
+  finalReflection?: string | null
+  finalReflectionSubmittedAt?: string | null
+  finalReviewReleased: boolean
+  finalReviewDueDate?: string | null
   dueDate?: string | null
   goals: Goal[]
   achievements: Achievement[]

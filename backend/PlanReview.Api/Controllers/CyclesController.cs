@@ -207,6 +207,12 @@ public class CyclesController : ControllerBase
         }
         if (!cycle.FinalReviewReleased)
             errors.Add("The year-end (final) review has not been released.");
+        else
+        {
+            var finalPending = active.Count(r => r.FinalReflectionSubmittedAt is null);
+            if (finalPending > 0)
+                errors.Add($"{finalPending} developer(s) have not submitted their year-end review.");
+        }
         var reviewsPending = active.Count(r => r.Reviewers.Count > 0 && r.Status != ReviewStatus.Completed);
         if (reviewsPending > 0)
             errors.Add($"{reviewsPending} review(s) still have pending manager/peer assessments.");

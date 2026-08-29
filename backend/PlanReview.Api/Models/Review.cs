@@ -41,6 +41,13 @@ public class Review
     /// <summary>Set when the developer submits the mid-year review — it then freezes.</summary>
     public DateTime? MidYearSubmittedAt { get; set; }
 
+    // Year-end (final) self reflection.
+    [MaxLength(2000)]
+    public string? FinalReflection { get; set; }
+    public DateTime? FinalReflectionUpdatedAt { get; set; }
+    /// <summary>Set when the developer submits the year-end review — it then freezes.</summary>
+    public DateTime? FinalReflectionSubmittedAt { get; set; }
+
     public List<Goal> Goals { get; set; } = new();
     public List<Achievement> Achievements { get; set; } = new();
     public List<RndImprovement> RndImprovements { get; set; } = new();

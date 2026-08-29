@@ -29,6 +29,12 @@ public class ReviewCycle
     public DateTime? HalfYearlyReleasedAt { get; set; }
     public DateTime? HalfYearlyDueDate { get; set; }
 
+    /// <summary>Year-end (final) review window: managers/peers complete their year-end
+    /// assessments. Must be released before the cycle can be closed.</summary>
+    public bool FinalReviewReleased { get; set; }
+    public DateTime? FinalReviewReleasedAt { get; set; }
+    public DateTime? FinalReviewDueDate { get; set; }
+
     /// <summary>Admin has released final ratings to developers (visible on My Performance).</summary>
     public bool RatingsReleased { get; set; }
     public DateTime? RatingsReleasedAt { get; set; }

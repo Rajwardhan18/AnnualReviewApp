@@ -5,14 +5,18 @@ import type { AppNotification, NotificationType } from '../types'
 const TYPE_LABEL: Record<NotificationType, string> = {
   PlanReleased: 'Plan released',
   HalfYearlyReleased: 'Half-yearly',
+  FinalReviewReleased: 'Year-end review',
   ReviewerAssigned: 'Assignment',
   Reminder: 'Reminder',
+  RatingsReleased: 'Ratings released',
 }
 const TYPE_BADGE: Record<NotificationType, string> = {
   PlanReleased: 'pro',
   HalfYearlyReleased: 'InProgress',
+  FinalReviewReleased: 'InProgress',
   ReviewerAssigned: 'trait',
   Reminder: 'personal',
+  RatingsReleased: 'Completed',
 }
 
 export default function NotificationsPage() {

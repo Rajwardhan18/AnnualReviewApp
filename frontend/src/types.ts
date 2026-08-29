@@ -30,11 +30,13 @@ export interface Cycle {
   dueDate?: string | null
   halfYearlyReleased: boolean
   halfYearlyDueDate?: string | null
+  finalReviewReleased: boolean
+  finalReviewDueDate?: string | null
   ratingsReleased: boolean
   ended: boolean
 }
 
-export type NotificationType = 'PlanReleased' | 'HalfYearlyReleased' | 'ReviewerAssigned' | 'Reminder'
+export type NotificationType = 'PlanReleased' | 'HalfYearlyReleased' | 'ReviewerAssigned' | 'Reminder' | 'RatingsReleased' | 'FinalReviewReleased'
 export interface AppNotification {
   id: number
   type: NotificationType

@@ -66,6 +66,18 @@ public class NotificationService
         return AddAsync(developer, NotificationType.HalfYearlyReleased, subject, body, cycle.Id);
     }
 
+    public Task FinalReviewReleasedAsync(User developer, ReviewCycle cycle)
+    {
+        var subject = $"{cycle.Name}: year-end review is open";
+        var body =
+            $"Hi {developer.FullName},\n\n" +
+            $"The year-end (final) review for {cycle.Name} is now open.\n\n" +
+            $"• Your manager and peer reviewers will complete their year-end assessments by: {Date(cycle.FinalReviewDueDate)}\n" +
+            "• Once all reviews are in, the cycle is closed and your ratings are released.\n\n" +
+            "— ARISe";
+        return AddAsync(developer, NotificationType.FinalReviewReleased, subject, body, cycle.Id);
+    }
+
     public Task RatingsReleasedAsync(User developer, ReviewCycle cycle)
     {
         var subject = $"{cycle.Name}: your ratings are now available";

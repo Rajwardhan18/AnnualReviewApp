@@ -225,7 +225,7 @@ function CyclesTab() {
         <h2>Cycles</h2>
         <div style={{ overflowX: 'auto' }}>
         <table>
-          <thead><tr><th>Name</th><th>Due</th><th>Reviews</th><th>Annual</th><th>Half-yearly</th><th>Ratings</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th>Due</th><th>Reviews</th><th>Annual</th><th>Half-yearly</th><th>Final review</th><th>Ratings</th><th></th></tr></thead>
           <tbody>
             {cycles.map((c) => (
               <tr key={c.id}>
@@ -235,6 +235,9 @@ function CyclesTab() {
                 <td>{c.isReleased ? <span className="badge Completed">Released</span> : <span className="badge Draft">Not released</span>}</td>
                 <td>{c.halfYearlyReleased
                   ? <span className="badge InProgress">Released{c.halfYearlyDueDate ? ` · due ${new Date(c.halfYearlyDueDate).toLocaleDateString()}` : ''}</span>
+                  : <span className="muted">—</span>}</td>
+                <td>{c.finalReviewReleased
+                  ? <span className="badge InProgress">Released{c.finalReviewDueDate ? ` · due ${new Date(c.finalReviewDueDate).toLocaleDateString()}` : ''}</span>
                   : <span className="muted">—</span>}</td>
                 <td className="pill-row">
                   {c.ratingsReleased
@@ -256,17 +259,23 @@ function CyclesTab() {
                         setMsg(`Half-yearly review released; ${r.notified} developer(s) notified.`); load()
                       })}>Release half-yearly</button>
                     )}
-                    {c.isReleased && !c.ratingsReleased && (
+                    {c.isReleased && c.halfYearlyReleased && !c.finalReviewReleased && !c.ended && (
+                      <button className="small secondary" onClick={() => wrap(async () => {
+                        const r = await post<{ notified: number }>(`/api/cycles/${c.id}/release-finalreview`, { finalReviewDueDate: `${c.year}-12-15` })
+                        setMsg(`Year-end review released; ${r.notified} developer(s) notified.`); load()
+                      })}>Release final review</button>
+                    )}
+                    {c.isReleased && c.finalReviewReleased && !c.ended && (
+                      <button className="small danger" onClick={() => wrap(async () => {
+                        await post(`/api/cycles/${c.id}/end`)
+                        setMsg('Cycle closed. You can now release ratings.'); load()
+                      })}>End cycle</button>
+                    )}
+                    {c.ended && !c.ratingsReleased && (
                       <button className="small" onClick={() => wrap(async () => {
                         const r = await post<{ notified: number }>(`/api/cycles/${c.id}/release-ratings`)
                         setMsg(`Ratings released; ${r.notified} developer(s) notified.`); load()
                       })}>Release ratings</button>
-                    )}
-                    {c.isReleased && !c.ended && (
-                      <button className="small danger" onClick={() => wrap(async () => {
-                        await post(`/api/cycles/${c.id}/end`)
-                        setMsg('Cycle ended.'); load()
-                      })}>End cycle</button>
                     )}
                   </div>
                 </td>

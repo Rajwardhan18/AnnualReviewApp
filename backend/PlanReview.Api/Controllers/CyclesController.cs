@@ -24,7 +24,8 @@ public class CyclesController : ControllerBase
 
     private static CycleDto ToDto(ReviewCycle c, int reviewCount) => new(
         c.Id, c.Name, c.Year, c.StartDate, c.EndDate, c.IsReleased, c.IsActive, reviewCount,
-        c.DueDate, c.HalfYearlyReleased, c.HalfYearlyDueDate, c.RatingsReleased, c.Ended);
+        c.DueDate, c.HalfYearlyReleased, c.HalfYearlyDueDate,
+        c.FinalReviewReleased, c.FinalReviewDueDate, c.RatingsReleased, c.Ended);
 
     [HttpGet]
     public async Task<IEnumerable<CycleDto>> GetAll()
@@ -120,8 +121,38 @@ public class CyclesController : ControllerBase
     }
 
     /// <summary>
-    /// Release final ratings to developers — they become visible on My Performance. This is a
-    /// separate step from ending the cycle.
+    /// Release the year-end (final) review window: managers and peers complete their year-end
+    /// assessments. This must be released before the cycle can be closed. Developers are notified.
+    /// </summary>
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id:int}/release-finalreview")]
+    public async Task<ActionResult> ReleaseFinalReview(int id, ReleaseFinalReviewRequest req)
+    {
+        var cycle = await _db.ReviewCycles.FindAsync(id);
+        if (cycle is null) return NotFound();
+        if (!cycle.IsReleased)
+            return BadRequest(new { message = "Release the annual plan before the year-end review." });
+        if (!cycle.HalfYearlyReleased)
+            return BadRequest(new { message = "Release the half-yearly review before the year-end review." });
+        if (cycle.FinalReviewReleased)
+            return BadRequest(new { message = "The year-end review has already been released." });
+
+        cycle.FinalReviewReleased = true;
+        cycle.FinalReviewReleasedAt = DateTime.UtcNow;
+        cycle.FinalReviewDueDate = req.FinalReviewDueDate is null
+            ? null : DateTime.SpecifyKind(req.FinalReviewDueDate.Value, DateTimeKind.Utc);
+
+        var developers = await _db.Users.Where(u => u.UserType == UserType.Developer && u.IsActive).ToListAsync();
+        foreach (var dev in developers)
+            await _notify.FinalReviewReleasedAsync(dev, cycle);
+
+        await _db.SaveChangesAsync();
+        return Ok(new { finalReviewReleased = true, notified = developers.Count });
+    }
+
+    /// <summary>
+    /// Release final ratings to developers — they become visible on My Performance. Only allowed
+    /// once the cycle has been closed (ended).
     /// </summary>
     [Authorize(Roles = "Admin")]
     [HttpPost("{id:int}/release-ratings")]
@@ -129,8 +160,8 @@ public class CyclesController : ControllerBase
     {
         var cycle = await _db.ReviewCycles.FindAsync(id);
         if (cycle is null) return NotFound();
-        if (!cycle.IsReleased)
-            return BadRequest(new { message = "Release the annual plan before releasing ratings." });
+        if (!cycle.Ended)
+            return BadRequest(new { message = "Close the cycle before releasing ratings." });
         if (cycle.RatingsReleased)
             return BadRequest(new { message = "Ratings have already been released." });
 
@@ -146,8 +177,9 @@ public class CyclesController : ControllerBase
     }
 
     /// <summary>
-    /// End the cycle. Only allowed once the half-yearly review has been submitted by everyone and
-    /// all manager &amp; peer reviews have been submitted (all reviews Completed).
+    /// End (close) the cycle. Only allowed once the year-end review has been released, the
+    /// half-yearly review has been submitted by everyone, and all manager &amp; peer reviews have
+    /// been submitted (all reviews Completed). Closing the cycle is what makes ratings releasable.
     /// </summary>
     [Authorize(Roles = "Admin")]
     [HttpPost("{id:int}/end")]
@@ -173,6 +205,8 @@ public class CyclesController : ControllerBase
             if (midYearPending > 0)
                 errors.Add($"{midYearPending} developer(s) have not submitted their mid-year review.");
         }
+        if (!cycle.FinalReviewReleased)
+            errors.Add("The year-end (final) review has not been released.");
         var reviewsPending = active.Count(r => r.Reviewers.Count > 0 && r.Status != ReviewStatus.Completed);
         if (reviewsPending > 0)
             errors.Add($"{reviewsPending} review(s) still have pending manager/peer assessments.");

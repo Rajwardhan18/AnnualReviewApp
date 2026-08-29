@@ -146,12 +146,17 @@ AnnualReviewApp/
   self-progress (goal completion, status breakdown) always, and — once the admin releases
   ratings — their self / peer / manager scores, **overall average**, weighted final, percentile
   and performance **band** vs the team average (reviewer names hidden). `GET /api/performance/me`.
-- **Release ratings & end cycle (separate)** — the admin can **release ratings**
-  (`POST /cycles/{id}/release-ratings`) to reveal them on My Performance, and separately
-  **end the cycle** (`POST /cycles/{id}/end`). Ending is only allowed once the half-yearly review
-  has been submitted by everyone and all manager & peer reviews are submitted.
+- **Year-end (final) review** — the admin releases the year-end review
+  (`POST /cycles/{id}/release-finalreview`) after the half-yearly checkpoint; managers and peers
+  complete their year-end assessments, and every developer is notified. This release is required
+  before the cycle can be closed.
+- **Close the cycle, then release ratings (in order)** — the admin **ends (closes) the cycle**
+  (`POST /cycles/{id}/end`) once the year-end review is released, the half-yearly review has been
+  submitted by everyone, and all manager & peer reviews are submitted. **Only after the cycle is
+  closed** can the admin **release ratings** (`POST /cycles/{id}/release-ratings`) to reveal them
+  on My Performance. The sequence is: annual → half-yearly → year-end review → close → ratings.
 - **Notifications** — every developer is notified when the annual plan (with target dates and
-  reminders) or the half-yearly checkpoint is released, and assigned managers/peers are notified
+  reminders), the half-yearly checkpoint, or the year-end review is released, and assigned managers/peers are notified
   on assignment. Notifications appear in-app (a bell with an unread badge) and are **also emailed
   when SMTP is configured**. Email is opt-in via `appsettings.json` → `Email.Enabled` (default
   `false`, so nothing is emailed until you add SMTP credentials); everything is still recorded
@@ -224,6 +229,9 @@ cd backend && dotnet test        # 36 tests
 | `POST /api/reviews/{id}/assign` | Admin | Assign 2 managers + peer |
 | `POST /api/reviews/{id}/assessment` | Reviewer | Submit rating & feedback |
 | `POST /api/cycles/{id}/release-halfyearly` | Admin | Open the mid-year checkpoint + notify developers |
+| `POST /api/cycles/{id}/release-finalreview` | Admin | Open the year-end review + notify developers |
+| `POST /api/cycles/{id}/end` | Admin | Close the cycle (required before ratings) |
+| `POST /api/cycles/{id}/release-ratings` | Admin | Reveal ratings on My Performance (after close) |
 | `GET /api/notifications/mine` \| `POST …/{id}/read` \| `read-all` | JWT | In-app notifications |
 
 Explore everything interactively at **http://localhost:5099/swagger**.
